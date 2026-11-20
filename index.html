@@ -455,7 +455,7 @@
     const STORAGE_KEY = "salgados_pro_db_v4";
     const SESSION_KEY = "salgados_pro_google_session_v1";
     const DB_SHEET_TITLE = "DB_Minifabrica_Salgados_PWA";
-    const DEFAULT_GOOGLE_CLIENT_ID = ""; // Opcional: cole aqui seu Client ID padrão do Google Cloud
+    const DEFAULT_GOOGLE_CLIENT_ID = "430639408517-me8ijjmu016m00qmjmqnt2ltvu9cl0ql.apps.googleusercontent.com";
 
     const TABLE_SCHEMAS = {
       Config: ["chave", "valor"],
@@ -474,7 +474,7 @@
     let pedidosSelecionadosIds = new Set();
     let cameraStream = null;
     let selfieCapturadaTemp = "";
-    let googleSession = null; // { email, name, picture, accessToken, expiresAt, approved, spreadsheetId, sheetUrl }
+    let googleSession = null;
 
     let db = {
       Config: [
@@ -505,6 +505,10 @@
       loadLocalDB();
       loadGoogleSession();
       seedInitialDataIfEmpty();
+      if (!getConfig("googleClientId")) {
+        setConfig("googleClientId", DEFAULT_GOOGLE_CLIENT_ID);
+        saveLocalDB(false);
+      }
       applyBranding();
       syncRegrasPontoInputs();
       renderEmailsAprovados();
@@ -515,7 +519,6 @@
       renderAll();
       lucide.createIcons();
 
-      // Se já houver sessão Google válida salva, tenta sincronizar suavemente sem perder dados no reload
       if (googleSession && googleSession.accessToken && Date.now() < googleSession.expiresAt && googleSession.approved) {
         syncWithCloud(true);
       }
@@ -609,7 +612,6 @@
       const eLower = String(email).trim().toLowerCase();
       const master = String(getConfig("emailMaster") || "").trim().toLowerCase();
       const lista = getListaEmailsAprovados();
-      // Se nenhum email master nem lista estiver configurada ainda no primeiro uso, libera para configuração inicial do ADM
       if (!master && lista.length === 0) return true;
       return (master && eLower === master) || lista.includes(eLower);
     }
@@ -713,7 +715,6 @@
             const userInfo = await userRes.json();
             const email = (userInfo.email || "").toLowerCase();
 
-            // Se ainda não havia emailMaster configurado, define o primeiro login como master se desejado ou valida
             if (!getConfig("emailMaster") && getListaEmailsAprovados().length === 0) {
               setConfig("emailMaster", email);
               saveLocalDB(false);
@@ -816,7 +817,6 @@
       };
 
       try {
-        // 1. Procura a planilha na conta Google logada
         const query = encodeURIComponent(`name='${DB_SHEET_TITLE}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
         const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,webViewLink)`, { headers });
         const searchJson = await searchRes.json();
@@ -828,7 +828,6 @@
           spreadsheetId = searchJson.files[0].id;
           sheetUrl = searchJson.files[0].webViewLink || `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
         } else {
-          // 2. Cria a planilha com todas as abas diretamente na conta Google da fábrica
           const sheetsPayload = Object.keys(TABLE_SCHEMAS).map(title => ({ properties: { title } }));
           const createRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
             method: "POST",
@@ -842,7 +841,6 @@
           spreadsheetId = created.spreadsheetId;
           sheetUrl = created.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
 
-          // Escreve os cabeçalhos de cada aba
           for (const [sheetName, cols] of Object.entries(TABLE_SCHEMAS)) {
             await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName + "!A1")}?valueInputOption=USER_ENTERED`, {
               method: "PUT",
@@ -859,7 +857,6 @@
         setConfig("sheetUrl", sheetUrl);
         applyBranding();
 
-        // 3. Lê dados existentes na nuvem e faz merge com dados locais (sem perder dados locais)
         for (const [tableName, cols] of Object.entries(TABLE_SCHEMAS)) {
           if (tableName === "Config") continue;
           const range = encodeURIComponent(`${tableName}!A2:Z1000`);
@@ -886,7 +883,6 @@
           db[tableName] = Array.from(map.values());
         }
 
-        // 4. Grava o estado consolidado de volta na planilha da conta logada
         await gravarTabelasNaPlanilhaGoogle(spreadsheetId, headers);
         saveLocalDB(false);
         renderAll();
@@ -907,7 +903,6 @@
           return (typeof val === "object" && val !== null) ? JSON.stringify(val) : (val !== undefined ? val : "");
         })));
 
-        // Limpa até 1000 linhas e grava
         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tableName + "!A1:Z1000")}:clear`, {
           method: "POST",
           headers
@@ -2491,7 +2486,7 @@
       const nome = document.getElementById("cfgNomeEmpresa").value.trim();
       const endBase = document.getElementById("cfgEnderecoBase").value.trim();
       const novaSenha = document.getElementById("cfgSenhaAdm").value.trim();
-      const clientId = document.getElementById("cfgGoogleClientId").value.trim();
+      const clientId = (document.getElementById("cfgGoogleClientId").value.trim() || DEFAULT_GOOGLE_CLIENT_ID);
 
       if (nome) setConfig("nomeEmpresa", nome);
       setConfig("enderecoBase", endBase);
