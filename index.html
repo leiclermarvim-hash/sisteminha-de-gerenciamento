@@ -69,34 +69,43 @@
   <!-- CONTEÚDO PRINCIPAL -->
   <main class="max-w-4xl mx-auto p-4 space-y-6">
 
-    <!-- ==================== 1. ABA PONTO BIOMÉTRICO ==================== -->
+    <!-- ==================== 1. ABA PONTO POR SELFIE / MATRÍCULA ==================== -->
     <section id="view-ponto" class="view-section space-y-5">
       <div class="bg-gradient-to-br from-orange-600 to-amber-600 rounded-2xl p-5 text-white shadow-lg">
         <div class="flex justify-between items-start">
           <div>
-            <p class="text-orange-100 text-xs uppercase tracking-wider font-semibold">Ponto por Reconhecimento de Digital</p>
+            <p class="text-orange-100 text-xs uppercase tracking-wider font-semibold">Ponto por Selfie & Matrícula</p>
             <h2 id="liveClock" class="text-3xl font-bold mt-1 tracking-tight">00:00:00</h2>
             <p id="liveDate" class="text-orange-100 text-sm mt-0.5">--/--/----</p>
           </div>
           <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
-            <i data-lucide="fingerprint" class="w-8 h-8 text-white"></i>
+            <i data-lucide="camera" class="w-8 h-8 text-white"></i>
           </div>
         </div>
 
         <div class="mt-5 bg-white/10 rounded-xl p-3.5 backdrop-blur-sm border border-white/15 space-y-3">
-          <p class="text-xs text-orange-50 text-center font-medium">
-            Encoste o dedo no sensor biométrico para identificar seu cadastro automaticamente:
-          </p>
+          <div>
+            <label class="block text-xs font-semibold text-orange-50 mb-1">Matrícula do Colaborador</label>
+            <input type="text" id="pontoMatriculaInput" placeholder="Ex: 101" class="w-full rounded-xl bg-white text-slate-900 px-3.5 py-2.5 text-sm font-bold focus:outline-none" />
+          </div>
 
           <div class="grid grid-cols-2 gap-2.5 pt-1">
-            <button onclick="baterPontoPorDigital('ENTRADA')" class="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3.5 px-4 rounded-xl shadow active:scale-95 transition text-sm">
-              <i data-lucide="fingerprint" class="w-5 h-5"></i> Entrada Digital
+            <button onclick="iniciarBatidaPonto('ENTRADA')" class="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3.5 px-4 rounded-xl shadow active:scale-95 transition text-sm">
+              <i data-lucide="camera" class="w-4 h-4"></i> Entrada Selfie
             </button>
-            <button onclick="baterPontoPorDigital('SAIDA')" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 px-4 rounded-xl shadow active:scale-95 transition text-sm">
-              <i data-lucide="fingerprint" class="w-5 h-5"></i> Saída Digital
+            <button onclick="iniciarBatidaPonto('SAIDA')" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 px-4 rounded-xl shadow active:scale-95 transition text-sm">
+              <i data-lucide="camera" class="w-4 h-4"></i> Saída Selfie
             </button>
           </div>
-          <p id="biometriaFeedback" class="text-[11px] text-center text-orange-100 min-h-[16px]"></p>
+
+          <!-- Fallback caso a selfie falhe: desbloqueio ADM por matrícula -->
+          <div class="pt-1 flex justify-center">
+            <button onclick="abrirDesbloqueioAdmMatricula()" class="text-[11px] text-orange-100 underline hover:text-white flex items-center gap-1">
+              <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> Selfie falhou? Desbloqueio ADM por matrícula
+            </button>
+          </div>
+
+          <p id="pontoFeedback" class="text-[11px] text-center text-orange-100 min-h-[16px]"></p>
         </div>
       </div>
 
@@ -114,16 +123,40 @@
         <div id="listaPontoHoje" class="space-y-2.5"></div>
       </div>
 
-      <!-- Painel Administrativo de Horas Extras e Folha (APENAS ADM) -->
+      <!-- Painel Administrativo: Horas Extras, Recibos, Espelho WhatsApp & Aceite -->
       <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border-2 border-amber-400 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <span class="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Área Restrita ADM</span>
-            <h3 class="font-bold text-slate-900 text-base mt-1">Equipe, Digitais, Horas Extras & Pagamentos</h3>
+            <h3 class="font-bold text-slate-900 text-base mt-1">Equipe, Recibos, Espelho & Horas Extras</h3>
           </div>
           <button onclick="abrirModalNovoColaborador()" class="bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1 shadow-sm">
             <i data-lucide="user-plus" class="w-4 h-4"></i> Equipe
           </button>
+        </div>
+
+        <!-- Configuração de Horas Extras e Aceite de Pagamento na Batida -->
+        <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-3 space-y-3 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">Exigir aceite de pagamento na batida de ponto</span>
+            <input type="checkbox" id="cfgExigirAceitePonto" onchange="salvarRegrasPontoAdm()" class="w-4 h-4 accent-orange-600 cursor-pointer" />
+          </div>
+
+          <div class="flex items-center justify-between border-t border-amber-200/70 pt-2">
+            <span class="font-bold text-slate-800">Habilitar cálculo de Horas Extras</span>
+            <input type="checkbox" id="cfgHabilitarExtras" onchange="salvarRegrasPontoAdm()" class="w-4 h-4 accent-orange-600 cursor-pointer" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600">A partir de quantas horas/dia</label>
+              <input type="number" step="0.5" min="1" id="cfgLimiteHorasNormais" onchange="salvarRegrasPontoAdm()" class="w-full border border-amber-300 rounded-lg px-2.5 py-1.5 bg-white font-semibold" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-600">Proporção Hora Extra (%)</label>
+              <input type="number" step="5" min="0" id="cfgPercentualExtraPadrao" onchange="salvarRegrasPontoAdm()" class="w-full border border-amber-300 rounded-lg px-2.5 py-1.5 bg-white font-semibold" />
+            </div>
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -158,7 +191,6 @@
         </div>
       </div>
 
-      <!-- Resumo Financeiro Pedidos (ADM) -->
       <div class="adm-only grid grid-cols-3 gap-2.5">
         <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
           <p class="text-[11px] text-slate-500 font-medium">Total Vendido</p>
@@ -174,7 +206,6 @@
         </div>
       </div>
 
-      <!-- Filtros -->
       <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
         <button onclick="filtrarPedidos('TODOS', this)" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-900 text-white">Todos</button>
         <button onclick="filtrarPedidos('PENDENTE_ENTREGA', this)" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">A Entregar</button>
@@ -185,11 +216,11 @@
       <div id="listaPedidos" class="space-y-3"></div>
     </section>
 
-    <!-- ==================== 3. ABA MERCADORIAS & INSUMOS ==================== -->
+    <!-- ==================== 3. ABA MERCADORIAS, SALGADOS & INSUMOS ==================== -->
     <section id="view-estoque" class="view-section hidden space-y-5">
       <div class="grid grid-cols-2 bg-slate-200/80 p-1 rounded-xl">
         <button onclick="switchEstoqueTab('insumos')" id="tabBtnInsumos" class="py-2 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition">Matéria-Prima (Insumos)</button>
-        <button onclick="switchEstoqueTab('produtos')" id="tabBtnProdutos" class="py-2 text-xs font-bold rounded-lg text-slate-600 transition">Catálogo de Salgados</button>
+        <button onclick="switchEstoqueTab('produtos')" id="tabBtnProdutos" class="py-2 text-xs font-bold rounded-lg text-slate-600 transition">Catálogo / Estoque Salgados</button>
       </div>
 
       <div id="subview-insumos" class="space-y-3">
@@ -205,17 +236,22 @@
         <div id="listaInsumos" class="space-y-2.5"></div>
       </div>
 
-      <div id="subview-produtos" class="hidden space-y-3">
+      <div id="subview-produtos" class="hidden space-y-4">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="font-bold text-slate-900 text-base">Salgados Produzidos</h3>
-            <p class="text-xs text-slate-500">Tabela de preços para pedidos</p>
+            <h3 class="font-bold text-slate-900 text-base">Estoque de Salgados Produzidos</h3>
+            <p class="text-xs text-slate-500">Baixa automática nas vendas e histórico de movimentação</p>
           </div>
           <button onclick="abrirModalProduto()" class="bg-orange-600 text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-sm">
             <i data-lucide="plus" class="w-4 h-4"></i> Novo Salgado
           </button>
         </div>
         <div id="listaProdutos" class="space-y-2.5"></div>
+
+        <div class="bg-white rounded-2xl p-3.5 border border-slate-200 space-y-2">
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-600">Histórico de Estoque de Salgados</h4>
+          <div id="historicoProdutosBox" class="space-y-1.5 max-h-48 overflow-y-auto text-xs"></div>
+        </div>
       </div>
     </section>
 
@@ -238,8 +274,6 @@
 
     <!-- ==================== 5. ABA RELATÓRIOS & CONFIGURAÇÕES ==================== -->
     <section id="view-config" class="view-section hidden space-y-5">
-
-      <!-- Personalização do Estabelecimento (ADM) -->
       <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-4">
         <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
           <i data-lucide="store" class="w-5 h-5 text-orange-600"></i> Identidade da Minifábrica
@@ -273,7 +307,7 @@
         </button>
       </div>
 
-      <!-- Integração Google Cloud & Banco de Dados -->
+      <!-- Integração Google Cloud -->
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
         <div class="flex items-center gap-2">
           <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
@@ -307,13 +341,10 @@
 
       <!-- Relatório Consolidado Avançado (ADM) -->
       <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border-2 border-amber-400 space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
-            <i data-lucide="bar-chart-3" class="w-5 h-5 text-orange-600"></i> Relatório Consolidado (ADM)
-          </h3>
-        </div>
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="bar-chart-3" class="w-5 h-5 text-orange-600"></i> Relatório Consolidado (ADM)
+        </h3>
 
-        <!-- Filtros de Período -->
         <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
           <label class="text-[11px] font-bold text-slate-600 uppercase">Período Rápido</label>
           <div class="grid grid-cols-4 gap-1.5">
@@ -334,17 +365,16 @@
           </div>
         </div>
 
-        <!-- Seletor do Tipo de Relatório -->
         <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
           <button onclick="trocarTipoRelatorio('GERAL', this)" class="rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white">Geral</button>
           <button onclick="trocarTipoRelatorio('COLABORADORES', this)" class="rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Colaboradores</button>
           <button onclick="trocarTipoRelatorio('PEDIDOS', this)" class="rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Pedidos</button>
           <button onclick="trocarTipoRelatorio('INSUMOS', this)" class="rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Insumos</button>
+          <button onclick="trocarTipoRelatorio('SALGADOS_ESTOQUE', this)" class="rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Estoque Salgados</button>
         </div>
 
         <div id="relatorioGeralBox" class="text-xs space-y-2.5 text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200"></div>
       </div>
-
     </section>
 
   </main>
@@ -352,7 +382,7 @@
   <!-- NAVEGAÇÃO INFERIOR -->
   <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center z-30 shadow-lg">
     <button onclick="switchTab('ponto')" class="nav-btn active flex flex-col items-center p-1.5 text-orange-600" data-tab="ponto">
-      <i data-lucide="fingerprint" class="w-5 h-5"></i>
+      <i data-lucide="camera" class="w-5 h-5"></i>
       <span class="text-[10px] font-semibold mt-0.5">Ponto</span>
     </button>
     <button onclick="switchTab('pedidos')" class="nav-btn flex flex-col items-center p-1.5 text-slate-400" data-tab="pedidos">
@@ -375,18 +405,20 @@
 
   <!-- MODAL -->
   <div id="modalBackdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div id="modalContent" class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto shadow-2xl space-y-4"></div>
+    <div id="modalContent" class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto shadow-2xl space-y-4"></div>
   </div>
 
   <!-- TOAST -->
   <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl z-50 hidden"></div>
 
   <script>
-    const STORAGE_KEY = "salgados_pro_db_v2";
+    const STORAGE_KEY = "salgados_pro_db_v3";
     let isAdm = false;
     let pedidoFilter = "TODOS";
     let tipoRelatorioAtual = "GERAL";
     let pedidosSelecionadosIds = new Set();
+    let cameraStream = null;
+    let selfieCapturadaTemp = "";
 
     let db = {
       Config: [
@@ -395,12 +427,17 @@
         { chave: "logoBase64", valor: "" },
         { chave: "senhaAdm", valor: "1234" },
         { chave: "googleScriptUrl", valor: "" },
-        { chave: "sheetUrl", valor: "" }
+        { chave: "sheetUrl", valor: "" },
+        { chave: "exigirAceitePonto", valor: "true" },
+        { chave: "habilitarExtras", valor: "true" },
+        { chave: "limiteHorasNormais", valor: "8" },
+        { chave: "percentualExtraPadrao", valor: "50" }
       ],
       Colaboradores: [],
       Ponto: [],
       Insumos: [],
       Produtos: [],
+      HistoricoEstoqueProdutos: [],
       Clientes: [],
       Pedidos: []
     };
@@ -409,6 +446,7 @@
       loadLocalDB();
       seedInitialDataIfEmpty();
       applyBranding();
+      syncRegrasPontoInputs();
       startClock();
       setDefaultDates();
       aplicarFiltroRelatorio('MENSAL', false);
@@ -441,30 +479,30 @@
 
     function setConfig(key, valor) {
       const idx = db.Config.findIndex(c => c.chave === key);
-      if (idx >= 0) db.Config[idx].valor = valor;
-      else db.Config.push({ chave: key, valor });
+      if (idx >= 0) db.Config[idx].valor = String(valor);
+      else db.Config.push({ chave: key, valor: String(valor) });
     }
 
     function seedInitialDataIfEmpty() {
       if (db.Produtos.length === 0) {
         db.Produtos = [
-          { id: uid(), nome: "Coxinha de Frango (Cento)", precoCento: 65.00, precoUnitario: 0.80, custoProducao: 28.00 },
-          { id: uid(), nome: "Bolinha de Queijo (Cento)", precoCento: 65.00, precoUnitario: 0.80, custoProducao: 30.00 },
-          { id: uid(), nome: "Kibe Recheado (Cento)", precoCento: 70.00, precoUnitario: 0.90, custoProducao: 32.00 }
+          { id: uid(), nome: "Coxinha de Frango (Cento)", precoCento: 65.00, custoProducao: 28.00, quantidadeEstoque: 10, estoqueMinimo: 2 },
+          { id: uid(), nome: "Bolinha de Queijo (Cento)", precoCento: 65.00, custoProducao: 30.00, quantidadeEstoque: 8, estoqueMinimo: 2 },
+          { id: uid(), nome: "Kibe Recheado (Cento)", precoCento: 70.00, custoProducao: 32.00, quantidadeEstoque: 6, estoqueMinimo: 2 }
         ];
         saveLocalDB(false);
       }
     }
 
     function uid() {
-      return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+      return Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
     }
 
     function showToast(msg) {
       const t = document.getElementById("toast");
       t.textContent = msg;
       t.classList.remove("hidden");
-      setTimeout(() => t.classList.add("hidden"), 3200);
+      setTimeout(() => t.classList.add("hidden"), 3400);
     }
 
     function formatMoney(val) {
@@ -488,8 +526,8 @@
       lucide.createIcons();
     }
 
-    function toggleAdmModal() {
-      if (isAdm) {
+    function toggleAdmModal(callbackSucesso = null) {
+      if (isAdm && !callbackSucesso) {
         isAdm = false;
         document.body.classList.remove("is-adm");
         document.getElementById("admBtnText").textContent = "Operador";
@@ -500,17 +538,18 @@
         return;
       }
 
+      window._admCallback = callbackSucesso;
       openModal(`
         <div class="text-center space-y-3">
           <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto">
             <i data-lucide="shield-check" class="w-6 h-6"></i>
           </div>
-          <h3 class="font-bold text-lg text-slate-900">Acesso Administrativo</h3>
-          <p class="text-xs text-slate-500">Digite a senha ADM para liberar registros de hoje, folha, relatórios e cadastros.</p>
+          <h3 class="font-bold text-lg text-slate-900">Desbloqueio Administrativo</h3>
+          <p class="text-xs text-slate-500">Digite a senha ADM para liberar a ação.</p>
           <input type="password" id="inputSenhaAdm" class="w-full border border-slate-300 rounded-xl px-4 py-3 text-center text-lg tracking-widest font-bold" placeholder="••••" onkeyup="if(event.key==='Enter') verificarSenhaAdm()" />
           <div class="grid grid-cols-2 gap-2 pt-2">
             <button onclick="closeModal()" class="py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm">Cancelar</button>
-            <button onclick="verificarSenhaAdm()" class="py-2.5 rounded-xl bg-amber-600 text-white font-semibold text-sm">Entrar como ADM</button>
+            <button onclick="verificarSenhaAdm()" class="py-2.5 rounded-xl bg-amber-600 text-white font-semibold text-sm">Confirmar ADM</button>
           </div>
         </div>
       `);
@@ -526,15 +565,17 @@
         document.getElementById("admBtnText").textContent = "ADM Ativo";
         document.getElementById("admLockIcon").setAttribute("data-lucide", "unlock");
         document.getElementById("admBadgeBtn").classList.replace("bg-slate-800", "bg-amber-600");
+        const cb = window._admCallback;
+        window._admCallback = null;
         closeModal();
         renderAll();
-        showToast("Modo ADM desbloqueado!");
+        if (typeof cb === "function") cb();
+        else showToast("Modo ADM desbloqueado!");
       } else {
         showToast("Senha incorreta!");
       }
     }
 
-    // RELÓGIO
     function startClock() {
       const update = () => {
         const now = new Date();
@@ -546,147 +587,269 @@
     }
 
     // =========================================================================
-    // BIOMETRIA POR DIGITAL VINCULADA AO ID DO COLABORADOR (WEBAUTHN)
+    // 1, 2, 3 & 6: PONTO POR SELFIE, FALLBACK ADM MATRÍCULA, ACEITE & EXTRAS
     // =========================================================================
-    function bufferToBase64(buf) {
-      return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    function syncRegrasPontoInputs() {
+      document.getElementById("cfgExigirAceitePonto").checked = getConfig("exigirAceitePonto") !== "false";
+      document.getElementById("cfgHabilitarExtras").checked = getConfig("habilitarExtras") !== "false";
+      document.getElementById("cfgLimiteHorasNormais").value = getConfig("limiteHorasNormais") || "8";
+      document.getElementById("cfgPercentualExtraPadrao").value = getConfig("percentualExtraPadrao") || "50";
     }
 
-    function base64ToBuffer(b64) {
-      const bin = atob(b64);
-      const arr = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-      return arr.buffer;
+    function salvarRegrasPontoAdm() {
+      setConfig("exigirAceitePonto", document.getElementById("cfgExigirAceitePonto").checked);
+      setConfig("habilitarExtras", document.getElementById("cfgHabilitarExtras").checked);
+      setConfig("limiteHorasNormais", parseFloat(document.getElementById("cfgLimiteHorasNormais").value) || 8);
+      setConfig("percentualExtraPadrao", parseFloat(document.getElementById("cfgPercentualExtraPadrao").value) || 50);
+      saveLocalDB();
+      renderPonto();
+      showToast("Regras de ponto e horas extras atualizadas!");
     }
 
-    async function capturarDigitalParaColaborador(colabId) {
-      const colab = db.Colaboradores.find(c => c.id === colabId);
-      if (!colab) return;
+    async function abrirModalCameraSelfie(titulo, onFotoConfirmada, onFalhaCamera) {
+      selfieCapturadaTemp = "";
+      openModal(`
+        <div class="space-y-3 text-center">
+          <h3 class="font-bold text-base text-slate-900">${titulo}</h3>
+          <p class="text-xs text-slate-500">Posicione o rosto na câmera e clique em Capturar Foto.</p>
+          <div class="relative rounded-2xl overflow-hidden bg-slate-900 aspect-square max-w-[280px] mx-auto flex items-center justify-center">
+            <video id="videoSelfie" autoplay playsinline class="w-full h-full object-cover"></video>
+            <img id="previewSelfieCapturada" class="hidden w-full h-full object-cover" />
+          </div>
+          <canvas id="canvasSelfie" class="hidden"></canvas>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button onclick="capturarFrameSelfie()" id="btnCapturarFoto" class="py-2.5 bg-orange-600 text-white rounded-xl text-xs font-bold">Capturar Selfie</button>
+            <button onclick="confirmarSelfieModal()" id="btnConfirmarSelfie" disabled class="py-2.5 bg-emerald-600 disabled:bg-slate-300 text-white rounded-xl text-xs font-bold">Usar Selfie</button>
+          </div>
+          <button onclick="fecharCameraEAcionarFallback()" class="w-full py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold">Cancelar / Falha na Câmera</button>
+        </div>
+      `);
 
-      if (!window.PublicKeyCredential) {
-        return showToast("Este navegador/dispositivo não suporta WebAuthn biométrico.");
-      }
+      window._onSelfieConfirmada = onFotoConfirmada;
+      window._onSelfieFalha = onFalhaCamera;
 
       try {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-        const userIdBytes = new TextEncoder().encode(colab.id);
-
-        const cred = await navigator.credentials.create({
-          publicKey: {
-            challenge: challenge,
-            rp: { name: getConfig("nomeEmpresa") || "SalgadosPro" },
-            user: {
-              id: userIdBytes,
-              name: `${colab.id}@salgadospro.local`,
-              displayName: colab.nome
-            },
-            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-            authenticatorSelection: {
-              authenticatorAttachment: "platform",
-              userVerification: "required"
-            },
-            timeout: 60000
-          }
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 480 } },
+          audio: false
         });
-
-        colab.biometriaId = bufferToBase64(cred.rawId);
-        saveLocalDB();
-        showToast(`Digital vinculada ao ID de ${colab.nome}!`);
-        const badge = document.getElementById("modalDigitalStatus");
-        if (badge) {
-          badge.textContent = "✅ Digital cadastrada e vinculada ao ID";
-          badge.className = "text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200";
-        }
+        const vid = document.getElementById("videoSelfie");
+        if (vid) vid.srcObject = cameraStream;
       } catch (err) {
-        console.error(err);
-        showToast("Captura de digital cancelada ou não concluída.");
+        console.warn("Erro câmera:", err);
+        pararStreamCamera();
+        closeModal();
+        if (typeof onFalhaCamera === "function") onFalhaCamera(err);
+        else showToast("Câmera indisponível ou bloqueada.");
       }
     }
 
-    async function baterPontoPorDigital(tipo) {
-      const feedback = document.getElementById("biometriaFeedback");
-      const cadastrados = db.Colaboradores.filter(c => c.ativo !== false && c.biometriaId);
+    function pararStreamCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+    }
 
-      if (cadastrados.length === 0) {
-        feedback.textContent = "Nenhuma digital cadastrada ainda. Cadastre no menu ADM > Equipe.";
-        return showToast("Nenhuma digital cadastrada na equipe.");
+    function capturarFrameSelfie() {
+      const vid = document.getElementById("videoSelfie");
+      const canvas = document.getElementById("canvasSelfie");
+      if (!vid || !canvas) return;
+      canvas.width = 240;
+      canvas.height = 240;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(vid, 0, 0, 240, 240);
+      selfieCapturadaTemp = canvas.toDataURL("image/jpeg", 0.7);
+
+      vid.classList.add("hidden");
+      const img = document.getElementById("previewSelfieCapturada");
+      img.src = selfieCapturadaTemp;
+      img.classList.remove("hidden");
+      document.getElementById("btnConfirmarSelfie").disabled = false;
+    }
+
+    function confirmarSelfieModal() {
+      const foto = selfieCapturadaTemp;
+      const cb = window._onSelfieConfirmada;
+      pararStreamCamera();
+      closeModal();
+      if (typeof cb === "function") cb(foto);
+    }
+
+    function fecharCameraEAcionarFallback() {
+      const cb = window._onSelfieFalha;
+      pararStreamCamera();
+      closeModal();
+      if (typeof cb === "function") cb(new Error("Cancelado"));
+    }
+
+    function iniciarBatidaPonto(tipo) {
+      const mat = document.getElementById("pontoMatriculaInput").value.trim().toLowerCase();
+      if (!mat) return showToast("Informe a matrícula do colaborador.");
+
+      const colab = db.Colaboradores.find(c => c.ativo !== false && String(c.matricula || "").trim().toLowerCase() === mat);
+      if (!colab) {
+        document.getElementById("pontoFeedback").textContent = "Matrícula não encontrada.";
+        return showToast("Matrícula não cadastrada!");
       }
 
-      if (!window.PublicKeyCredential) {
-        return showToast("Leitor biométrico indisponível neste dispositivo.");
-      }
+      abrirModalCameraSelfie(
+        `Selfie de ${tipo} - ${colab.nome}`,
+        (fotoBase64) => processarRegistroPonto(colab, tipo, fotoBase64, false, ""),
+        () => {
+          document.getElementById("pontoFeedback").textContent = "Selfie não concluída. Use desbloqueio ADM por matrícula se necessário.";
+          showToast("Selfie não capturada.");
+        }
+      );
+    }
 
-      try {
-        feedback.textContent = "Aguardando leitura da digital no sensor...";
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
+    function abrirDesbloqueioAdmMatricula() {
+      const matPre = document.getElementById("pontoMatriculaInput").value.trim();
+      toggleAdmModal(() => {
+        const hoje = new Date().toISOString().split("T")[0];
+        const hora = new Date().toTimeString().slice(0, 5);
+        openModal(`
+          <h3 class="font-bold text-base text-slate-900">Desbloqueio ADM por Matrícula</h3>
+          <p class="text-xs text-slate-500">Use quando a selfie falhar para registrar ponto com autorização administrativa.</p>
+          <div class="space-y-3 text-sm">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Matrícula do Colaborador</label>
+              <input type="text" id="admDesbMat" value="${matPre}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1 font-bold" placeholder="Ex: 101" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-xs font-semibold text-slate-600">Tipo</label>
+                <select id="admDesbTipo" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1">
+                  <option value="ENTRADA">ENTRADA</option>
+                  <option value="SAIDA">SAÍDA</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-600">Horário (Ajustável)</label>
+                <input type="time" id="admDesbHora" value="${hora}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+              </div>
+            </div>
+            <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <input type="checkbox" id="admDesbConsentimento" checked class="w-4 h-4 accent-orange-600" />
+              Ajustada com consentimento do colaborador
+            </label>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+              <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+              <button onclick="confirmarDesbloqueioAdmMatricula('${hoje}')" class="py-2.5 bg-amber-600 text-white rounded-xl font-semibold">Registrar Ponto</button>
+            </div>
+          </div>
+        `);
+      });
+    }
 
-        const allowCredentials = cadastrados.map(c => ({
-          id: base64ToBuffer(c.biometriaId),
-          type: "public-key"
-        }));
+    function confirmarDesbloqueioAdmMatricula(hojeStr) {
+      const mat = document.getElementById("admDesbMat").value.trim().toLowerCase();
+      const tipo = document.getElementById("admDesbTipo").value;
+      const hora = document.getElementById("admDesbHora").value;
+      const consent = document.getElementById("admDesbConsentimento").checked;
 
-        const assertion = await navigator.credentials.get({
-          publicKey: {
-            challenge: challenge,
-            allowCredentials: allowCredentials,
-            userVerification: "required",
-            timeout: 60000
-          }
-        });
+      const colab = db.Colaboradores.find(c => c.ativo !== false && String(c.matricula || "").trim().toLowerCase() === mat);
+      if (!colab) return showToast("Matrícula não encontrada.");
 
-        const credIdB64 = bufferToBase64(assertion.rawId);
-        const colab = db.Colaboradores.find(c => c.biometriaId === credIdB64);
+      const tag = consent ? "ajustada com consentimento do colaborador" : "ajustada via ADM";
+      processarRegistroPonto(colab, tipo, "", true, tag, hojeStr, hora);
+    }
 
-        if (!colab) {
-          feedback.textContent = "Digital não reconhecida entre os colaboradores.";
-          return showToast("Digital não cadastrada!");
+    function processarRegistroPonto(colab, tipo, selfieBase64, ajustadoManual = false, tagAjuste = "", dataOverride = "", horaOverride = "") {
+      const now = new Date();
+      const hojeStr = dataOverride || now.toISOString().split("T")[0];
+      const horaAtual = horaOverride || now.toTimeString().slice(0, 5);
+
+      let registroAlvo = null;
+
+      if (tipo === "ENTRADA") {
+        const aberto = db.Ponto.find(p => p.colaboradorId === colab.id && p.data === hojeStr && !p.saida);
+        if (aberto) {
+          closeModal();
+          return showToast(`${colab.nome} já possui entrada hoje às ${aberto.entrada}.`);
         }
 
-        const now = new Date();
-        const hojeStr = now.toISOString().split("T")[0];
-        const horaAtual = now.toTimeString().slice(0, 5);
-
-        if (tipo === "ENTRADA") {
-          const aberto = db.Ponto.find(p => p.colaboradorId === colab.id && p.data === hojeStr && !p.saida);
-          if (aberto) {
-            feedback.textContent = `${colab.nome} já possui entrada hoje às ${aberto.entrada}.`;
-            return showToast(`${colab.nome} já registrou entrada hoje.`);
-          }
-          db.Ponto.push({
-            id: uid(),
-            colaboradorId: colab.id,
-            data: hojeStr,
-            entrada: horaAtual,
-            saida: "",
-            horasNormais: 0,
-            horasExtras: 0,
-            percentualExtra: 50,
-            valorCalculado: 0,
-            pago: false
-          });
-          feedback.textContent = `Entrada registrada: ${colab.nome} às ${horaAtual}`;
-          showToast(`Entrada: ${colab.nome} (${horaAtual})`);
-        } else {
-          const aberto = db.Ponto.find(p => p.colaboradorId === colab.id && p.data === hojeStr && !p.saida);
-          if (!aberto) {
-            feedback.textContent = `Nenhuma entrada em aberto hoje para ${colab.nome}.`;
-            return showToast(`Sem entrada em aberto para ${colab.nome}.`);
-          }
-          aberto.saida = horaAtual;
-          calcularHorasRegistro(aberto, colab);
-          feedback.textContent = `Saída registrada: ${colab.nome} às ${horaAtual}`;
-          showToast(`Saída: ${colab.nome} (${horaAtual})`);
+        registroAlvo = {
+          id: uid(),
+          colaboradorId: colab.id,
+          data: hojeStr,
+          entrada: horaAtual,
+          saida: "",
+          selfieEntrada: selfieBase64,
+          selfieSaida: "",
+          horasNormais: 0,
+          horasExtras: 0,
+          percentualExtra: parseFloat(getConfig("percentualExtraPadrao") || "50"),
+          valorCalculado: 0,
+          aceitePagamento: false,
+          dataAceite: "",
+          ajustadaConsentimento: ajustadoManual,
+          tagAjuste: ajustadoManual ? tagAjuste : ""
+        };
+        db.Ponto.push(registroAlvo);
+      } else {
+        const aberto = db.Ponto.find(p => p.colaboradorId === colab.id && p.data === hojeStr && !p.saida);
+        if (!aberto) {
+          closeModal();
+          return showToast(`Sem entrada em aberto hoje para ${colab.nome}.`);
         }
-
-        saveLocalDB();
-        renderPonto();
-      } catch (err) {
-        console.error(err);
-        feedback.textContent = "Leitura biométrica cancelada ou não reconhecida.";
-        showToast("Biometria não validada.");
+        aberto.saida = horaAtual;
+        if (selfieBase64) aberto.selfieSaida = selfieBase64;
+        if (ajustadoManual) {
+          aberto.ajustadaConsentimento = true;
+          aberto.tagAjuste = tagAjuste || "ajustada com consentimento do colaborador";
+        }
+        calcularHorasRegistro(aberto, colab);
+        registroAlvo = aberto;
       }
+
+      saveLocalDB();
+      renderPonto();
+      document.getElementById("pontoFeedback").textContent = `${tipo} registrada para ${colab.nome} às ${horaAtual}.`;
+
+      // Verifica se há valor pendente de aceite de pagamento (se ativado pelo ADM)
+      const exigirAceite = getConfig("exigirAceitePonto") !== "false";
+      const pendentesAceite = db.Ponto.filter(p => p.colaboradorId === colab.id && Number(p.valorCalculado || 0) > 0 && !p.aceitePagamento);
+
+      if (exigirAceite && pendentesAceite.length > 0) {
+        const totalPendente = pendentesAceite.reduce((s, x) => s + Number(x.valorCalculado || 0), 0);
+        openModal(`
+          <div class="space-y-3 text-center">
+            <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
+              <i data-lucide="file-check-2" class="w-6 h-6"></i>
+            </div>
+            <h3 class="font-bold text-base text-slate-900">Aviso de Pagamento - ${colab.nome}</h3>
+            <p class="text-xs text-slate-600">
+              ${tipo} registrada às <strong>${horaAtual}</strong>. Existe valor lançado ainda não aceito:
+            </p>
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+              <span class="text-xs text-emerald-800 block">Valor Lançado Pendente de Aceite</span>
+              <strong class="text-xl text-emerald-700">${formatMoney(totalPendente)}</strong>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="closeModal()" class="py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold">Aceitar Depois</button>
+              <button onclick="aceitarPagamentoNaBatida('${colab.id}')" class="py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold">Aceitar Pagamento</button>
+            </div>
+          </div>
+        `);
+      } else {
+        closeModal();
+        showToast(`${tipo} registrada para ${colab.nome} (${horaAtual})!`);
+      }
+    }
+
+    function aceitarPagamentoNaBatida(colabId) {
+      const agora = new Date().toISOString();
+      db.Ponto.forEach(p => {
+        if (p.colaboradorId === colabId && Number(p.valorCalculado || 0) > 0 && !p.aceitePagamento) {
+          p.aceitePagamento = true;
+          p.dataAceite = agora;
+        }
+      });
+      saveLocalDB();
+      renderPonto();
+      closeModal();
+      showToast("Pagamento aceito e registrado no recibo!");
     }
 
     function calcularHorasRegistro(registro, colab) {
@@ -696,9 +859,13 @@
       let totalHoras = (h2 + m2 / 60) - (h1 + m1 / 60);
       if (totalHoras < 0) totalHoras += 24;
 
-      const normais = Math.min(totalHoras, 8);
-      const extras = Math.max(0, totalHoras - 8);
-      const perc = Number(registro.percentualExtra || 50);
+      const habilitarExtras = getConfig("habilitarExtras") !== "false";
+      const limiteHoras = parseFloat(getConfig("limiteHorasNormais") || "8");
+      const percPadrao = parseFloat(getConfig("percentualExtraPadrao") || "50");
+
+      const normais = habilitarExtras ? Math.min(totalHoras, limiteHoras) : totalHoras;
+      const extras = habilitarExtras ? Math.max(0, totalHoras - limiteHoras) : 0;
+      const perc = Number(registro.percentualExtra ?? percPadrao);
       const valorHora = Number(colab?.valorHora || 0);
 
       registro.horasNormais = Number(normais.toFixed(2));
@@ -716,12 +883,17 @@
         container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Nenhuma batida de ponto registrada hoje.</p>`;
       } else {
         container.innerHTML = registrosHoje.map(r => {
-          const colab = db.Colaboradores.find(c => c.id === r.colaboradorId) || { nome: "Desconhecido" };
+          const colab = db.Colaboradores.find(c => c.id === r.colaboradorId) || { nome: "Desconhecido", matricula: "-" };
+          const foto = r.selfieSaida || r.selfieEntrada || colab.selfieRef || "";
           return `
-            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <div>
-                <p class="font-semibold text-sm text-slate-800">${colab.nome}</p>
-                <p class="text-xs text-slate-500">Entrada: <strong class="text-emerald-600">${r.entrada}</strong> • Saída: <strong class="text-slate-700">${r.saida || "Em turno"}</strong></p>
+            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 gap-2">
+              <div class="flex items-center gap-2.5">
+                ${foto ? `<img src="${foto}" class="w-10 h-10 rounded-full object-cover border border-slate-200" />` : `<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold">${colab.matricula}</div>`}
+                <div>
+                  <p class="font-semibold text-sm text-slate-800">${colab.nome} <span class="text-xs text-slate-400 font-mono">#${colab.matricula}</span></p>
+                  <p class="text-xs text-slate-500">Entrada: <strong class="text-emerald-600">${r.entrada}</strong> • Saída: <strong class="text-slate-700">${r.saida || "Em turno"}</strong></p>
+                  ${r.tagAjuste ? `<span class="inline-block mt-1 text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">${r.tagAjuste}</span>` : ''}
+                </div>
               </div>
               <span class="text-xs font-bold px-2.5 py-1 rounded-lg ${r.saida ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}">
                 ${r.saida ? (r.horasNormais + r.horasExtras).toFixed(1) + 'h' : 'Ativo'}
@@ -765,15 +937,13 @@
 
         return `
           <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
-            <div class="flex justify-between items-start">
-              <div>
-                <div class="flex items-center gap-2">
-                  <h4 class="font-bold text-slate-900 text-sm">${colab.nome}</h4>
-                  <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold ${colab.biometriaId ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
-                    ${colab.biometriaId ? 'Digital OK' : 'Sem Digital'}
-                  </span>
+            <div class="flex justify-between items-start gap-2">
+              <div class="flex items-center gap-2.5">
+                ${colab.selfieRef ? `<img src="${colab.selfieRef}" class="w-11 h-11 rounded-full object-cover border border-orange-300" />` : `<div class="w-11 h-11 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center font-bold text-xs">#${colab.matricula}</div>`}
+                <div>
+                  <h4 class="font-bold text-slate-900 text-sm">${colab.nome} <span class="text-xs font-mono text-slate-500">Mat: ${colab.matricula}</span></h4>
+                  <p class="text-[11px] text-slate-500">Hora: <strong>${formatMoney(colab.valorHora)}</strong> • Pgto: <strong>${colab.formaPagamento || 'PIX'}</strong></p>
                 </div>
-                <p class="text-[11px] text-slate-500">ID: <span class="font-mono">${colab.id}</span> • Hora: <strong>${formatMoney(colab.valorHora)}</strong> • Pgto: <strong>${colab.formaPagamento || 'PIX'}</strong></p>
               </div>
               <div class="text-right">
                 <span class="text-xs text-slate-500 block">Total Período</span>
@@ -787,15 +957,18 @@
               <div><span class="text-amber-600 block text-[10px]">Extras</span><strong class="text-amber-600">${totalExtras.toFixed(1)}h</strong></div>
             </div>
 
-            <div class="grid grid-cols-3 gap-2 pt-1">
+            <div class="grid grid-cols-2 gap-2 pt-1">
               <button onclick="abrirModalNovoColaborador('${colab.id}')" class="bg-white border border-slate-300 text-slate-700 py-1.5 rounded-lg text-xs font-semibold">
-                Editar / Digital
+                Editar / Selfie
               </button>
               <button onclick="abrirDetalhesPontoColab('${colab.id}')" class="bg-white border border-slate-300 text-slate-700 py-1.5 rounded-lg text-xs font-semibold">
-                Horas / Extras
+                Horários / Extras
               </button>
-              <button onclick="enviarInformePagamentoWhatsApp('${colab.id}', ${totalNormais}, ${totalExtras}, ${totalPagar})" class="bg-emerald-600 text-white py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
-                <i data-lucide="send" class="w-3.5 h-3.5"></i> WhatsApp
+              <button onclick="abrirModalReciboFuncionario('${colab.id}')" class="bg-amber-600 text-white py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
+                <i data-lucide="receipt" class="w-3.5 h-3.5"></i> Recibo
+              </button>
+              <button onclick="abrirModalEspelhoWhatsApp('${colab.id}')" class="bg-emerald-600 text-white py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
+                <i data-lucide="send" class="w-3.5 h-3.5"></i> Espelho WhatsApp
               </button>
             </div>
           </div>
@@ -806,14 +979,21 @@
 
     function abrirModalNovoColaborador(editId = null) {
       const idAtual = editId || uid();
-      const colab = editId ? (db.Colaboradores.find(c => c.id === editId) || {}) : { id: idAtual };
+      const colab = editId ? (db.Colaboradores.find(c => c.id === editId) || {}) : { id: idAtual, matricula: String(db.Colaboradores.length + 101) };
+      window._tempSelfieCadastro = colab.selfieRef || "";
 
       openModal(`
         <h3 class="font-bold text-lg text-slate-900">${editId ? 'Editar' : 'Novo'} Colaborador</h3>
         <div class="space-y-3 text-sm">
-          <div>
-            <label class="text-xs font-semibold text-slate-600">Nome Completo</label>
-            <input type="text" id="colabNome" value="${colab.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="Ex: Maria Silva" />
+          <div class="grid grid-cols-3 gap-2">
+            <div class="col-span-2">
+              <label class="text-xs font-semibold text-slate-600">Nome Completo</label>
+              <input type="text" id="colabNome" value="${colab.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="Ex: Maria Silva" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Matrícula</label>
+              <input type="text" id="colabMatricula" value="${colab.matricula || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1 font-bold" placeholder="101" />
+            </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -840,39 +1020,71 @@
             </div>
           </div>
 
-          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-slate-700">Biometria do Colaborador (ID: ${idAtual})</span>
-              <button type="button" onclick="salvarColaborador('${idAtual}', true)" class="bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1">
-                <i data-lucide="fingerprint" class="w-4 h-4"></i> Capturar Digital
-              </button>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <img id="previewSelfieColab" src="${colab.selfieRef || 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect width=\'100\' height=\'100\' rx=\'50\' fill=\'%23e2e8f0\'/><text x=\'50\' y=\'62\' font-size=\'40\' text-anchor=\'middle\'>👤</text></svg>'}" class="w-12 h-12 rounded-full object-cover border border-slate-300" />
+              <div>
+                <p class="text-xs font-bold text-slate-700">Selfie do Colaborador</p>
+                <p class="text-[11px] text-slate-500">Foto de referência na batida</p>
+              </div>
             </div>
-            <p id="modalDigitalStatus" class="text-xs ${colab.biometriaId ? 'text-emerald-700 font-semibold' : 'text-slate-500'}">
-              ${colab.biometriaId ? '✅ Digital já cadastrada e vinculada ao ID' : 'Nenhuma digital vinculada ainda'}
-            </p>
+            <button type="button" onclick="capturarSelfieCadastro()" class="bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1">
+              <i data-lucide="camera" class="w-4 h-4"></i> Selfie
+            </button>
           </div>
 
           <div class="grid grid-cols-2 gap-2 pt-2">
             <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
-            <button onclick="salvarColaborador('${idAtual}', false)" class="py-2.5 bg-slate-900 text-white rounded-xl font-semibold">Salvar</button>
+            <button onclick="salvarColaborador('${idAtual}')" class="py-2.5 bg-slate-900 text-white rounded-xl font-semibold">Salvar</button>
           </div>
         </div>
       `);
     }
 
-    async function salvarColaborador(colabId, capturarEmSeguida = false) {
+    function capturarSelfieCadastro() {
+      const rascunho = {
+        nome: document.getElementById("colabNome").value,
+        matricula: document.getElementById("colabMatricula").value,
+        telefone: document.getElementById("colabTel").value,
+        valorHora: document.getElementById("colabValorHora").value,
+        formaPagamento: document.getElementById("colabFormaPgto").value,
+        chavePix: document.getElementById("colabPix").value
+      };
+      abrirModalCameraSelfie("Selfie de Cadastro", (foto) => {
+        window._tempSelfieCadastro = foto;
+        const img = document.getElementById("previewSelfieColab");
+        if (img) img.src = foto;
+        if (document.getElementById("colabNome")) {
+          document.getElementById("colabNome").value = rascunho.nome;
+          document.getElementById("colabMatricula").value = rascunho.matricula;
+          document.getElementById("colabTel").value = rascunho.telefone;
+          document.getElementById("colabValorHora").value = rascunho.valorHora;
+          document.getElementById("colabFormaPgto").value = rascunho.formaPagamento;
+          document.getElementById("colabPix").value = rascunho.chavePix;
+        }
+        showToast("Selfie capturada!");
+      });
+    }
+
+    function salvarColaborador(colabId) {
       const nome = document.getElementById("colabNome").value.trim();
+      const matricula = document.getElementById("colabMatricula").value.trim();
       if (!nome) return showToast("Informe o nome do colaborador.");
+      if (!matricula) return showToast("Informe a matrícula do colaborador.");
+
+      const duplicada = db.Colaboradores.find(c => c.id !== colabId && String(c.matricula).toLowerCase() === matricula.toLowerCase());
+      if (duplicada) return showToast("Já existe outro colaborador com essa matrícula.");
 
       const existente = db.Colaboradores.find(c => c.id === colabId);
       const obj = {
         id: colabId,
+        matricula,
         nome,
         telefone: document.getElementById("colabTel").value.trim(),
         valorHora: parseFloat(document.getElementById("colabValorHora").value) || 0,
         formaPagamento: document.getElementById("colabFormaPgto").value,
         chavePix: document.getElementById("colabPix").value.trim(),
-        biometriaId: existente?.biometriaId || "",
+        selfieRef: window._tempSelfieCadastro || existente?.selfieRef || "",
         ativo: true
       };
 
@@ -884,15 +1096,9 @@
       }
 
       saveLocalDB();
+      closeModal();
       renderPonto();
-
-      if (capturarEmSeguida) {
-        await capturarDigitalParaColaborador(colabId);
-        renderPonto();
-      } else {
-        closeModal();
-        showToast("Colaborador salvo!");
-      }
+      showToast("Colaborador salvo!");
     }
 
     function abrirDetalhesPontoColab(colabId) {
@@ -902,14 +1108,15 @@
       const pontos = db.Ponto.filter(p => p.colaboradorId === colabId && (!ini || p.data >= ini) && (!fim || p.data <= fim));
 
       openModal(`
-        <h3 class="font-bold text-base text-slate-900">Horas & Extras: ${colab.nome}</h3>
+        <h3 class="font-bold text-base text-slate-900">Horários & Extras: ${colab.nome}</h3>
         <div class="space-y-2.5 max-h-80 overflow-y-auto">
           ${pontos.length === 0 ? '<p class="text-xs text-slate-400">Nenhum registro no período.</p>' : pontos.map(p => `
             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-              <div class="flex justify-between font-bold">
+              <div class="flex justify-between items-center font-bold">
                 <span>Data: ${p.data.split('-').reverse().join('/')}</span>
                 <span class="text-emerald-700">${formatMoney(p.valorCalculado)}</span>
               </div>
+              ${p.tagAjuste ? `<span class="inline-block text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">${p.tagAjuste}</span>` : ''}
               <div class="grid grid-cols-3 gap-2">
                 <div>
                   <label class="text-[10px] text-slate-500">Entrada</label>
@@ -921,13 +1128,13 @@
                 </div>
                 <div>
                   <label class="text-[10px] text-slate-500">% Hora Extra</label>
-                  <select onchange="atualizarRegistroPonto('${p.id}', 'percentualExtra', this.value)" class="w-full border rounded px-1 py-1 bg-white">
-                    <option value="50" ${p.percentualExtra == 50 ? 'selected' : ''}>50%</option>
-                    <option value="75" ${p.percentualExtra == 75 ? 'selected' : ''}>75%</option>
-                    <option value="100" ${p.percentualExtra == 100 ? 'selected' : ''}>100%</option>
-                  </select>
+                  <input type="number" value="${p.percentualExtra ?? 50}" onchange="atualizarRegistroPonto('${p.id}', 'percentualExtra', this.value)" class="w-full border rounded px-1.5 py-1 bg-white" />
                 </div>
               </div>
+              <label class="flex items-center gap-1.5 text-[11px] text-slate-700 pt-1">
+                <input type="checkbox" ${p.ajustadaConsentimento ? 'checked' : ''} onchange="marcarConsentimentoPonto('${p.id}', this.checked)" class="w-3.5 h-3.5 accent-orange-600" />
+                ajustada com consentimento do colaborador
+              </label>
             </div>
           `).join("")}
         </div>
@@ -939,21 +1146,138 @@
       const p = db.Ponto.find(x => x.id === pontoId);
       if (!p) return;
       p[campo] = valor;
+      if (campo === "entrada" || campo === "saida") {
+        p.ajustadaConsentimento = true;
+        p.tagAjuste = "ajustada com consentimento do colaborador";
+      }
       const colab = db.Colaboradores.find(c => c.id === p.colaboradorId);
       calcularHorasRegistro(p, colab);
       saveLocalDB();
     }
 
-    function enviarInformePagamentoWhatsApp(colabId, normais, extras, total) {
+    function marcarConsentimentoPonto(pontoId, checked) {
+      const p = db.Ponto.find(x => x.id === pontoId);
+      if (!p) return;
+      p.ajustadaConsentimento = checked;
+      p.tagAjuste = checked ? "ajustada com consentimento do colaborador" : "";
+      saveLocalDB();
+    }
+
+    function abrirModalReciboFuncionario(colabId) {
       const colab = db.Colaboradores.find(c => c.id === colabId);
-      if (!colab || !colab.telefone) return showToast("Colaborador sem telefone cadastrado.");
+      const ini = document.getElementById("filtroPontoInicio").value;
+      const fim = document.getElementById("filtroPontoFim").value;
+      const pontos = db.Ponto.filter(p => p.colaboradorId === colabId && (!ini || p.data >= ini) && (!fim || p.data <= fim));
+
+      let norm = 0, ext = 0, total = 0, aceitos = 0;
+      pontos.forEach(p => {
+        calcularHorasRegistro(p, colab);
+        norm += Number(p.horasNormais || 0);
+        ext += Number(p.horasExtras || 0);
+        total += Number(p.valorCalculado || 0);
+        if (p.aceitePagamento) aceitos += Number(p.valorCalculado || 0);
+      });
+
       const empresa = getConfig("nomeEmpresa");
-      const msg = `*${empresa} - Informe de Pagamento*\n\nOlá, *${colab.nome}*!\n• Horas Normais: ${normais.toFixed(1)}h\n• Horas Extras: ${extras.toFixed(1)}h\n• Valor/Hora: ${formatMoney(colab.valorHora)}\n• Forma de Pgto: ${colab.formaPagamento} ${colab.chavePix ? '('+colab.chavePix+')' : ''}\n\n*Total a Receber: ${formatMoney(total)}*`;
+
+      openModal(`
+        <div class="space-y-3 text-xs">
+          <div class="border-b border-slate-200 pb-2">
+            <span class="text-[10px] font-bold uppercase text-orange-600">Recibo de Pagamento</span>
+            <h3 class="font-bold text-base text-slate-900">${empresa}</h3>
+            <p class="text-slate-500">Colaborador: <strong>${colab.nome}</strong> (Mat: ${colab.matricula})</p>
+            <p class="text-slate-500">Período: ${ini.split('-').reverse().join('/')} até ${fim.split('-').reverse().join('/')}</p>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
+            <div class="flex justify-between"><span>Horas Normais:</span><strong>${norm.toFixed(1)}h</strong></div>
+            <div class="flex justify-between"><span>Horas Extras:</span><strong>${ext.toFixed(1)}h</strong></div>
+            <div class="flex justify-between"><span>Valor da Hora:</span><strong>${formatMoney(colab.valorHora)}</strong></div>
+            <div class="flex justify-between"><span>Forma de Pagamento:</span><strong>${colab.formaPagamento || 'PIX'} ${colab.chavePix ? '('+colab.chavePix+')' : ''}</strong></div>
+            <div class="flex justify-between"><span>Aceito pelo Colaborador:</span><strong class="text-blue-700">${formatMoney(aceitos)}</strong></div>
+            <hr class="border-slate-200" />
+            <div class="flex justify-between text-sm font-bold text-emerald-700"><span>TOTAL LÍQUIDO:</span><span>${formatMoney(total)}</span></div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button onclick="window.print()" class="py-2.5 bg-slate-900 text-white rounded-xl font-bold">Imprimir / PDF</button>
+            <button onclick="closeModal()" class="py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold">Fechar</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function abrirModalEspelhoWhatsApp(colabId) {
+      const colab = db.Colaboradores.find(c => c.id === colabId);
+      const ini = document.getElementById("filtroPontoInicio").value;
+      const fim = document.getElementById("filtroPontoFim").value;
+
+      openModal(`
+        <h3 class="font-bold text-base text-slate-900">Enviar Espelho de Ponto - ${colab.nome}</h3>
+        <p class="text-xs text-slate-500">Escolha o período para calcular horas e enviar no WhatsApp.</p>
+        <div class="space-y-3 text-sm">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Data Inicial</label>
+              <input type="date" id="espDataIni" value="${ini}" onchange="atualizarPreviewEspelho('${colab.id}')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs mt-1" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Data Final</label>
+              <input type="date" id="espDataFim" value="${fim}" onchange="atualizarPreviewEspelho('${colab.id}')" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs mt-1" />
+            </div>
+          </div>
+          <div id="previewEspelhoBox" class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1"></div>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+            <button onclick="dispararEspelhoWhatsApp('${colab.id}')" class="py-2.5 bg-emerald-600 text-white rounded-xl font-semibold flex items-center justify-center gap-1">
+              <i data-lucide="send" class="w-4 h-4"></i> Enviar WhatsApp
+            </button>
+          </div>
+        </div>
+      `);
+      atualizarPreviewEspelho(colabId);
+    }
+
+    function calcularEspelhoPeriodo(colabId, ini, fim) {
+      const colab = db.Colaboradores.find(c => c.id === colabId);
+      const pontos = db.Ponto.filter(p => p.colaboradorId === colabId && (!ini || p.data >= ini) && (!fim || p.data <= fim));
+      let norm = 0, ext = 0, total = 0;
+      pontos.forEach(p => {
+        calcularHorasRegistro(p, colab);
+        norm += Number(p.horasNormais || 0);
+        ext += Number(p.horasExtras || 0);
+        total += Number(p.valorCalculado || 0);
+      });
+      return { colab, pontos, norm, ext, total };
+    }
+
+    function atualizarPreviewEspelho(colabId) {
+      const ini = document.getElementById("espDataIni").value;
+      const fim = document.getElementById("espDataFim").value;
+      const res = calcularEspelhoPeriodo(colabId, ini, fim);
+      document.getElementById("previewEspelhoBox").innerHTML = `
+        <div class="flex justify-between"><span>Dias Trabalhados:</span><strong>${res.pontos.length}</strong></div>
+        <div class="flex justify-between"><span>Horas Normais:</span><strong>${res.norm.toFixed(1)}h</strong></div>
+        <div class="flex justify-between"><span>Horas Extras:</span><strong class="text-amber-700">${res.ext.toFixed(1)}h</strong></div>
+        <div class="flex justify-between text-sm font-bold text-emerald-700 pt-1 border-t border-slate-200"><span>Valor a Receber:</span><span>${formatMoney(res.total)}</span></div>
+      `;
+    }
+
+    function dispararEspelhoWhatsApp(colabId) {
+      const ini = document.getElementById("espDataIni").value;
+      const fim = document.getElementById("espDataFim").value;
+      const { colab, pontos, norm, ext, total } = calcularEspelhoPeriodo(colabId, ini, fim);
+      if (!colab || !colab.telefone) return showToast("Colaborador sem telefone cadastrado.");
+
+      const empresa = getConfig("nomeEmpresa");
+      const linhas = pontos.map(p =>
+        `• ${p.data.split('-').reverse().join('/')}: ${p.entrada || '--'} às ${p.saida || '--'} | Norm: ${Number(p.horasNormais || 0).toFixed(1)}h | Ext: ${Number(p.horasExtras || 0).toFixed(1)}h${p.tagAjuste ? ' (' + p.tagAjuste + ')' : ''}`
+      ).join("\n");
+
+      const msg = `*${empresa} - Espelho de Ponto*\n\nColaborador: *${colab.nome}* (Mat: ${colab.matricula})\nPeríodo: ${ini.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')}\n\n${linhas || 'Sem batidas no período.'}\n\n*Resumo:*\n• Horas Normais: ${norm.toFixed(1)}h\n• Horas Extras: ${ext.toFixed(1)}h\n• Valor/Hora: ${formatMoney(colab.valorHora)}\n• Forma de Pgto: ${colab.formaPagamento || 'PIX'}\n\n*Total a Receber: ${formatMoney(total)}*`;
       abrirWhatsApp(colab.telefone, msg);
     }
 
     // =========================================================================
-    // PEDIDOS, FILTRO QUITADOS, BOTÃO "FATURAR" E GOOGLE MAPS
+    // 4, 7 & 8: PEDIDOS, LAYOUT VERTICAL DE ITEM, ESTOQUE SALGADOS, MAPS & WHATSAPP
     // =========================================================================
     function filtrarPedidos(status, btnEl) {
       pedidoFilter = status;
@@ -976,13 +1300,14 @@
 
     function abrirMapaEndereco(endereco) {
       if (!endereco || !endereco.trim()) return showToast("Endereço não cadastrado para este cliente.");
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco.trim())}`;
-      window.open(url, "_blank");
+      const origem = encodeURIComponent((getConfig("enderecoBase") || "").trim());
+      const base = origem ? `&origin=${origem}` : "";
+      window.open(`https://www.google.com/maps/dir/?api=1${base}&destination=${encodeURIComponent(endereco.trim())}&travelmode=driving`, "_blank");
     }
 
     function abrirRotaPedidosSelecionados() {
       const ids = Array.from(pedidosSelecionadosIds);
-      if (ids.length === 0) return showToast("Selecione pelo menos um pedido na caixinha para deslocamento.");
+      if (ids.length === 0) return showToast("Selecione pelo menos um pedido para deslocamento.");
 
       const destinos = ids.map(id => {
         const p = db.Pedidos.find(x => x.id === id);
@@ -990,16 +1315,16 @@
         return (cli?.endereco || "").trim();
       }).filter(Boolean);
 
-      if (destinos.length === 0) return showToast("Os pedidos selecionados não possuem endereço cadastrado.");
+      if (destinos.length === 0) return showToast("Os pedidos selecionados não possuem endereço.");
 
       const origem = encodeURIComponent((getConfig("enderecoBase") || "").trim());
+      const base = origem ? `&origin=${origem}` : "";
+
       if (destinos.length === 1) {
-        const base = origem ? `&origin=${origem}` : "";
         window.open(`https://www.google.com/maps/dir/?api=1${base}&destination=${encodeURIComponent(destinos[0])}&travelmode=driving`, "_blank");
       } else {
         const destination = encodeURIComponent(destinos[destinos.length - 1]);
         const waypoints = encodeURIComponent(destinos.slice(0, -1).join("|"));
-        const base = origem ? `&origin=${origem}` : "";
         window.open(`https://www.google.com/maps/dir/?api=1${base}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, "_blank");
       }
     }
@@ -1020,7 +1345,6 @@
       } else if (pedidoFilter === "PENDENTE_PAGAMENTO") {
         lista = lista.filter(p => (Number(p.valorTotal) - Number(p.valorPago)) > 0.01);
       } else if (pedidoFilter === "CONCLUIDO") {
-        // Correção: exibe pedidos quitados mesmo se ainda não entregues
         lista = lista.filter(p => (Number(p.valorTotal) - Number(p.valorPago)) <= 0.01);
       }
 
@@ -1041,18 +1365,18 @@
           <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
             <div class="flex justify-between items-start gap-2">
               <div class="flex items-start gap-2.5">
-                <input type="checkbox" ${checked} onchange="toggleSelecaoPedidoMapa('${p.id}', this.checked)" class="mt-1 w-4 h-4 accent-blue-600 rounded cursor-pointer" title="Selecionar para deslocamento" />
+                <input type="checkbox" ${checked} onchange="toggleSelecaoPedidoMapa('${p.id}', this.checked)" class="mt-1 w-4 h-4 accent-blue-600 rounded cursor-pointer" />
                 <div>
                   <div class="flex flex-wrap items-center gap-1.5">
                     <h4 class="font-bold text-slate-900 text-sm">${cliente.nome}</h4>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${p.statusEntrega === 'ENTREGUE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}">
-                      ${p.statusEntrega === 'ENTREGUE' ? 'Entregue' : 'A Entregar'}
+                      ${p.statusEntrega === 'ENTREGUE' ? 'Entregue' : 'Será Entregue'}
                     </span>
                   </div>
                   <p class="text-xs text-slate-500 mt-1">${itensTexto}</p>
                   ${cliente.endereco ? `
                     <button onclick="abrirMapaEndereco('${cliente.endereco.replace(/'/g, "\\'")}')" class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline">
-                      <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> ${cliente.endereco} (Maps)
+                      <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> ${cliente.endereco} (Rota Rápida)
                     </button>
                   ` : `<span class="text-[11px] text-slate-400 block mt-1">Sem endereço cadastrado</span>`}
                 </div>
@@ -1068,12 +1392,12 @@
 
             <div class="flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-3 py-2 rounded-xl">
               <span>📦 Entrega: <strong>${p.dataEntrega ? p.dataEntrega.split('-').reverse().join('/') : '--'}</strong></span>
-              <span>💰 Receber: <strong>${p.dataVencimento ? p.dataVencimento.split('-').reverse().join('/') : '--'}</strong></span>
+              <span>💳 Pagamento: <strong>${p.dataVencimento ? p.dataVencimento.split('-').reverse().join('/') : '--'}</strong></span>
             </div>
 
             <div class="grid grid-cols-3 gap-2 pt-1">
               <button onclick="alternarStatusEntrega('${p.id}')" class="py-2 px-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                ${p.statusEntrega === 'ENTREGUE' ? 'Reabrir Entrega' : 'Marcar Entregue'}
+                ${p.statusEntrega === 'ENTREGUE' ? 'Marcar A Entregar' : 'Marcar Entregue'}
               </button>
 
               <button onclick="abrirModalPagamentoFracionado('${p.id}')" ${quitado ? 'disabled' : ''} class="py-2 px-2 rounded-xl text-xs font-semibold transition ${quitado ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100'}">
@@ -1108,23 +1432,30 @@
 
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-xs font-semibold text-slate-600">Dia da Entrega</label>
+              <label class="text-xs font-semibold text-slate-600">Data da Entrega</label>
               <input type="date" id="pedDataEntrega" value="${hoje}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
             </div>
             <div>
-              <label class="text-xs font-semibold text-slate-600">Dia de Receber Pgto</label>
+              <label class="text-xs font-semibold text-slate-600">Data de Pagamento</label>
               <input type="date" id="pedDataVenc" value="${hoje}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
             </div>
           </div>
 
-          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+          <!-- #7: Quantidade multiplicadora abaixo da descrição do item -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
             <label class="text-xs font-bold text-slate-700 block">Adicionar Salgados ao Pedido</label>
-            <div class="flex gap-2">
-              <select id="pedProdSelect" class="flex-1 border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white">
-                ${db.Produtos.map(pr => `<option value="${pr.id}">${pr.nome} - ${formatMoney(pr.precoCento)}</option>`).join("")}
+            <div>
+              <label class="text-[11px] text-slate-500 block mb-1">Salgado</label>
+              <select id="pedProdSelect" class="w-full border border-slate-200 rounded-lg px-2.5 py-2 text-xs bg-white">
+                ${db.Produtos.map(pr => `<option value="${pr.id}">${pr.nome} - ${formatMoney(pr.precoCento)} (Est: ${pr.quantidadeEstoque ?? 0})</option>`).join("")}
               </select>
-              <input type="number" id="pedProdQtd" value="1" min="0.5" step="0.5" class="w-16 border border-slate-200 rounded-lg px-2 py-2 text-xs text-center bg-white" />
-              <button onclick="addItemCarrinho()" class="bg-slate-900 text-white px-3 rounded-lg text-xs font-bold">+</button>
+            </div>
+            <div class="flex items-end gap-2">
+              <div class="flex-1">
+                <label class="text-[11px] text-slate-500 block mb-1">Quantidade Multiplicadora</label>
+                <input type="number" id="pedProdQtd" value="1" min="0.5" step="0.5" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold bg-white" />
+              </div>
+              <button type="button" onclick="addItemCarrinho()" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap">+ Adicionar</button>
             </div>
             <div id="carrinhoLista" class="space-y-1 pt-1 text-xs"></div>
           </div>
@@ -1149,7 +1480,8 @@
 
     function addItemCarrinho() {
       const prodId = document.getElementById("pedProdSelect").value;
-      const qtd = parseFloat(document.getElementById("pedProdQtd").value) || 1;
+      const qtd = parseFloat(document.getElementById("pedProdQtd").value) || 0;
+      if (qtd <= 0) return showToast("Informe uma quantidade maior que zero.");
       const prod = db.Produtos.find(p => p.id === prodId);
       if (!prod) return;
 
@@ -1184,6 +1516,7 @@
       const valorTotal = carrinhoPedido.reduce((acc, i) => acc + i.subtotal, 0);
       const sinal = parseFloat(document.getElementById("pedSinal").value) || 0;
       const hoje = new Date().toISOString().split("T")[0];
+      const pedidoId = uid();
 
       const pagamentos = [];
       if (sinal > 0) {
@@ -1191,8 +1524,29 @@
       }
       const totalPago = pagamentos.reduce((s, x) => s + x.valor, 0);
 
+      // #8: Subtrai do estoque de salgados e registra no histórico
+      carrinhoPedido.forEach(item => {
+        const prod = db.Produtos.find(pr => pr.id === item.produtoId);
+        if (prod) {
+          const saldoAnterior = Number(prod.quantidadeEstoque || 0);
+          const novoSaldo = Number((saldoAnterior - Number(item.qtd)).toFixed(2));
+          prod.quantidadeEstoque = novoSaldo;
+
+          db.HistoricoEstoqueProdutos.push({
+            id: uid(),
+            produtoId: prod.id,
+            produtoNome: prod.nome,
+            data: hoje,
+            tipo: "VENDA",
+            quantidadeDelta: -Number(item.qtd),
+            saldoApos: novoSaldo,
+            referencia: `Pedido #${pedidoId.slice(-4)}`
+          });
+        }
+      });
+
       db.Pedidos.push({
-        id: uid(),
+        id: pedidoId,
         clienteId: document.getElementById("pedCliente").value,
         dataPedido: hoje,
         dataEntrega: document.getElementById("pedDataEntrega").value,
@@ -1208,7 +1562,8 @@
       saveLocalDB();
       closeModal();
       renderPedidos();
-      showToast("Pedido salvo!");
+      renderEstoque();
+      showToast("Pedido salvo e estoque atualizado!");
     }
 
     function alternarStatusEntrega(pedidoId) {
@@ -1231,11 +1586,11 @@
         <div class="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl text-center text-xs border border-slate-200">
           <div><span class="text-slate-500 block">Total</span><strong>${formatMoney(p.valorTotal)}</strong></div>
           <div><span class="text-emerald-600 block">Já Pago</span><strong class="text-emerald-700">${formatMoney(p.valorPago)}</strong></div>
-          <div><span class="text-rose-600 block">Falta Receber</span><strong class="text-rose-700">${formatMoney(restante)}</strong></div>
+          <div><span class="text-rose-600 block">Falta Pagar</span><strong class="text-rose-700">${formatMoney(restante)}</strong></div>
         </div>
 
         <div class="space-y-2">
-          <p class="text-xs font-bold text-slate-700">Parcelas / Faturamentos Registrados:</p>
+          <p class="text-xs font-bold text-slate-700">Faturamentos Registrados:</p>
           ${(p.pagamentosJson || []).length === 0 ? '<p class="text-xs text-slate-400">Nenhum faturamento registrado ainda.</p>' :
             p.pagamentosJson.map(pg => `
               <div class="flex justify-between text-xs bg-emerald-50/70 px-3 py-2 rounded-lg border border-emerald-100">
@@ -1246,10 +1601,10 @@
         </div>
 
         <div class="border-t border-slate-200 pt-3 space-y-2.5">
-          <p class="text-xs font-bold text-slate-800">Registrar Faturamento (Total ou Parcial):</p>
+          <p class="text-xs font-bold text-slate-800">Registrar Faturamento:</p>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-[11px] text-slate-500">Valor a Faturar (R$)</label>
+              <label class="text-[11px] text-slate-500">Valor (R$)</label>
               <input type="number" step="0.01" max="${restante.toFixed(2)}" id="novoPgtoValor" value="${restante.toFixed(2)}" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold" />
             </div>
             <div>
@@ -1295,13 +1650,14 @@
       const itens = (p.itensJson || []).map(i => `• ${i.qtd}x ${i.nome}: ${formatMoney(i.subtotal)}`).join("\n");
       const restante = Math.max(0, Number(p.valorTotal) - Number(p.valorPago));
       const dataEnt = p.dataEntrega ? p.dataEntrega.split('-').reverse().join('/') : 'A combinar';
-      const dataVenc = p.dataVencimento ? p.dataVencimento.split('-').reverse().join('/') : 'Na entrega';
+      const dataPag = p.dataVencimento ? p.dataVencimento.split('-').reverse().join('/') : 'A combinar';
+      const statusEntregaTexto = p.statusEntrega === "ENTREGUE" ? `Já foi entregue (${dataEnt})` : `Será entregue em ${dataEnt}`;
 
-      const msg = `*${empresa} - Resumo do Pedido*\n\nOlá, *${cliente.nome}*!\n${itens}\n\n*Total:* ${formatMoney(p.valorTotal)}\n*Pago:* ${formatMoney(p.valorPago)}\n*Falta:* ${formatMoney(restante)}\n\n📦 *Entrega:* ${dataEnt}${cliente.endereco ? ' ('+cliente.endereco+')' : ''}\n💰 *Recebimento:* ${dataVenc}`;
+      const msg = `*${empresa} - Resumo do Pedido*\n\nOlá, *${cliente.nome}*!\n${itens}\n\n*Total:* ${formatMoney(p.valorTotal)}\n*Pago:* ${formatMoney(p.valorPago)}\n*Falta:* ${formatMoney(restante)}\n\n📦 *Status de Entrega:* ${statusEntregaTexto}${cliente.endereco ? '\n📍 *Endereço:* ' + cliente.endereco : ''}\n💳 *Data de Pagamento:* ${dataPag}`;
       abrirWhatsApp(cliente.telefone, msg);
     }
 
-    // ESTOQUE
+    // ESTOQUE INSUMOS & SALGADOS
     function switchEstoqueTab(sub) {
       document.getElementById("subview-insumos").classList.toggle("hidden", sub !== "insumos");
       document.getElementById("subview-produtos").classList.toggle("hidden", sub !== "produtos");
@@ -1341,16 +1697,73 @@
       }
 
       const listaProd = document.getElementById("listaProdutos");
-      listaProd.innerHTML = db.Produtos.map(pr => `
-        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex justify-between items-center shadow-sm">
-          <div>
-            <h4 class="font-bold text-sm text-slate-900">${pr.nome}</h4>
-            <p class="text-xs text-slate-500 mt-0.5">Venda: <strong class="text-emerald-700">${formatMoney(pr.precoCento)}</strong> <span class="adm-only">• Custo: <strong>${formatMoney(pr.custoProducao)}</strong></span></p>
+      listaProd.innerHTML = db.Produtos.map(pr => {
+        const qtdEst = Number(pr.quantidadeEstoque ?? 0);
+        const baixo = qtdEst <= Number(pr.estoqueMinimo ?? 0);
+        return `
+          <div class="bg-white p-3.5 rounded-2xl border ${baixo ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200'} flex justify-between items-center shadow-sm">
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="font-bold text-sm text-slate-900">${pr.nome}</h4>
+                ${baixo ? '<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Repor Estoque</span>' : ''}
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Estoque: <strong class="text-slate-900">${qtdEst}</strong> • Venda: <strong class="text-emerald-700">${formatMoney(pr.precoCento)}</strong>
+                <span class="adm-only">• Custo: <strong>${formatMoney(pr.custoProducao)}</strong></span>
+              </p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="ajustarEstoqueProduto('${pr.id}', -1, 'AJUSTE')" class="w-8 h-8 rounded-lg bg-slate-100 font-bold text-slate-700">-</button>
+              <button onclick="ajustarEstoqueProduto('${pr.id}', 1, 'PRODUCAO')" class="w-8 h-8 rounded-lg bg-slate-100 font-bold text-slate-700">+</button>
+              <button onclick="abrirModalProduto('${pr.id}')" class="p-2 text-slate-400 hover:text-slate-700"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+            </div>
           </div>
-          <button onclick="abrirModalProduto('${pr.id}')" class="p-2 text-slate-400 hover:text-slate-700"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-        </div>
-      `).join("");
+        `;
+      }).join("");
+
+      const histBox = document.getElementById("historicoProdutosBox");
+      const hist = [...(db.HistoricoEstoqueProdutos || [])].reverse().slice(0, 20);
+      if (hist.length === 0) {
+        histBox.innerHTML = `<p class="text-slate-400">Nenhuma movimentação registrada ainda.</p>`;
+      } else {
+        histBox.innerHTML = hist.map(h => `
+          <div class="flex justify-between items-center py-1.5 border-b border-slate-100 last:border-0">
+            <div>
+              <span class="font-semibold text-slate-800">${h.produtoNome}</span>
+              <span class="text-[10px] text-slate-500 block">${h.data.split('-').reverse().join('/')} • ${h.tipo} (${h.referencia || ''})</span>
+            </div>
+            <div class="text-right">
+              <strong class="${Number(h.quantidadeDelta) < 0 ? 'text-rose-600' : 'text-emerald-600'}">${Number(h.quantidadeDelta) > 0 ? '+' : ''}${h.quantidadeDelta}</strong>
+              <span class="text-[10px] text-slate-400 block">Saldo: ${h.saldoApos}</span>
+            </div>
+          </div>
+        `).join("");
+      }
+
       lucide.createIcons();
+    }
+
+    function ajustarEstoqueProduto(prodId, delta, tipo = "AJUSTE") {
+      const pr = db.Produtos.find(p => p.id === prodId);
+      if (!pr) return;
+      const atual = Number(pr.quantidadeEstoque ?? 0);
+      const novo = Math.max(0, Number((atual + delta).toFixed(2)));
+      const realDelta = Number((novo - atual).toFixed(2));
+      pr.quantidadeEstoque = novo;
+
+      db.HistoricoEstoqueProdutos.push({
+        id: uid(),
+        produtoId: pr.id,
+        produtoNome: pr.nome,
+        data: new Date().toISOString().split("T")[0],
+        tipo,
+        quantidadeDelta: realDelta,
+        saldoApos: novo,
+        referencia: "Ajuste rápido"
+      });
+
+      saveLocalDB();
+      renderEstoque();
     }
 
     function ajustarQtdInsumo(id, delta) {
@@ -1429,11 +1842,21 @@
     function abrirModalProduto(editId = null) {
       const pr = editId ? db.Produtos.find(p => p.id === editId) : {};
       openModal(`
-        <h3 class="font-bold text-lg text-slate-900">${editId ? 'Editar' : 'Novo'} Produto / Salgado</h3>
+        <h3 class="font-bold text-lg text-slate-900">${editId ? 'Editar' : 'Novo'} Salgado no Estoque</h3>
         <div class="space-y-3 text-sm">
           <div>
-            <label class="text-xs font-semibold text-slate-600">Nome do Produto</label>
+            <label class="text-xs font-semibold text-slate-600">Nome do Salgado</label>
             <input type="text" id="prNome" value="${pr.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Quantidade em Estoque</label>
+              <input type="number" step="0.5" id="prEstoque" value="${pr.quantidadeEstoque ?? 0}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1 font-bold" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Estoque Mínimo</label>
+              <input type="number" step="0.5" id="prMin" value="${pr.estoqueMinimo ?? 2}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -1456,23 +1879,44 @@
     function salvarProduto(editId) {
       const nome = document.getElementById("prNome").value.trim();
       if (!nome) return showToast("Informe o nome do produto.");
+      const novaQtd = parseFloat(document.getElementById("prEstoque").value) || 0;
+      const existente = editId ? db.Produtos.find(p => p.id === editId) : null;
+      const qtdAnterior = existente ? Number(existente.quantidadeEstoque ?? 0) : 0;
+
       const obj = {
         id: editId || uid(),
         nome,
+        quantidadeEstoque: novaQtd,
+        estoqueMinimo: parseFloat(document.getElementById("prMin").value) || 0,
         precoCento: parseFloat(document.getElementById("prPreco").value) || 0,
-        precoUnitario: 0,
         custoProducao: parseFloat(document.getElementById("prCusto").value) || 0
       };
-      if (editId) {
+
+      if (existente) {
         const idx = db.Produtos.findIndex(p => p.id === editId);
         db.Produtos[idx] = obj;
       } else {
         db.Produtos.push(obj);
       }
+
+      const delta = Number((novaQtd - qtdAnterior).toFixed(2));
+      if (delta !== 0) {
+        db.HistoricoEstoqueProdutos.push({
+          id: uid(),
+          produtoId: obj.id,
+          produtoNome: obj.nome,
+          data: new Date().toISOString().split("T")[0],
+          tipo: existente ? "AJUSTE_CADASTRO" : "CADASTRO_INICIAL",
+          quantidadeDelta: delta,
+          saldoApos: novaQtd,
+          referencia: "Cadastro de produto"
+        });
+      }
+
       saveLocalDB();
       closeModal();
       renderEstoque();
-      showToast("Produto salvo!");
+      showToast("Salgado salvo!");
     }
 
     // CLIENTES
@@ -1496,7 +1940,7 @@
             <p class="text-xs text-slate-500 mt-0.5">${c.telefone || 'Sem telefone'} ${c.endereco ? '• ' + c.endereco : ''}</p>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
-            ${c.endereco ? `<button onclick="abrirMapaEndereco('${c.endereco.replace(/'/g, "\\'")}')" title="Ver no Google Maps" class="p-2 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="map-pin" class="w-4 h-4"></i></button>` : ''}
+            ${c.endereco ? `<button onclick="abrirMapaEndereco('${c.endereco.replace(/'/g, "\\'")}')" title="Rota mais rápida no Google Maps" class="p-2 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="map-pin" class="w-4 h-4"></i></button>` : ''}
             ${c.telefone ? `<button onclick="abrirWhatsApp('${c.telefone}', 'Olá ${c.nome}, tudo bem?')" title="WhatsApp" class="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="message-circle" class="w-4 h-4"></i></button>` : ''}
             <button onclick="abrirModalCliente('${c.id}')" class="p-2 text-slate-400 hover:text-slate-700"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
           </div>
@@ -1637,7 +2081,7 @@
 
         if (getJson.status === "success" && getJson.data) {
           const cloudData = getJson.data;
-          const tables = ["Colaboradores", "Ponto", "Insumos", "Produtos", "Clientes", "Pedidos"];
+          const tables = ["Colaboradores", "Ponto", "Insumos", "Produtos", "HistoricoEstoqueProdutos", "Clientes", "Pedidos"];
           tables.forEach(t => {
             const localArr = db[t] || [];
             const cloudArr = cloudData[t] || [];
@@ -1710,7 +2154,7 @@
       a.click();
     }
 
-    // RELATÓRIO CONSOLIDADO COM FILTROS E CATEGORIAS
+    // RELATÓRIO CONSOLIDADO
     function aplicarFiltroRelatorio(tipoPeriodo, shouldRender = true) {
       const hoje = new Date();
       const fimStr = hoje.toISOString().split("T")[0];
@@ -1750,6 +2194,7 @@
 
       const pedidosPeriodo = db.Pedidos.filter(p => (!ini || p.dataPedido >= ini) && (!fim || p.dataPedido <= fim));
       const pontosPeriodo = db.Ponto.filter(p => (!ini || p.data >= ini) && (!fim || p.data <= fim));
+      const histPeriodo = (db.HistoricoEstoqueProdutos || []).filter(h => (!ini || h.data >= ini) && (!fim || h.data <= fim));
 
       if (tipoRelatorioAtual === "GERAL") {
         const totalVendas = pedidosPeriodo.reduce((s, p) => s + Number(p.valorTotal || 0), 0);
@@ -1765,7 +2210,7 @@
           <div class="flex justify-between"><span>A Receber do Período:</span><strong class="text-rose-600">${formatMoney(Math.max(0, totalVendas - totalRecebido))}</strong></div>
           <hr class="border-slate-200" />
           <div class="flex justify-between"><span>Mão de Obra no Período:</span><strong>${formatMoney(folhaPeriodo)}</strong></div>
-          <div class="flex justify-between"><span>Valor em Insumos (Estoque Atual):</span><strong>${formatMoney(valorEstoque)}</strong></div>
+          <div class="flex justify-between"><span>Valor em Insumos:</span><strong>${formatMoney(valorEstoque)}</strong></div>
         `;
       } else if (tipoRelatorioAtual === "COLABORADORES") {
         if (db.Colaboradores.length === 0) {
@@ -1784,7 +2229,7 @@
           return `
             <div class="p-2.5 bg-white rounded-lg border border-slate-200 flex justify-between items-center">
               <div>
-                <p class="font-bold text-slate-800">${c.nome}</p>
+                <p class="font-bold text-slate-800">${c.nome} (#${c.matricula})</p>
                 <p class="text-[11px] text-slate-500">Dias: ${pts.length} • Normais: ${norm.toFixed(1)}h • Extras: ${ext.toFixed(1)}h • ${c.formaPagamento || 'PIX'}</p>
               </div>
               <strong class="text-emerald-700">${formatMoney(pg)}</strong>
@@ -1803,7 +2248,7 @@
             <div class="p-2.5 bg-white rounded-lg border border-slate-200 flex justify-between items-center">
               <div>
                 <p class="font-bold text-slate-800">${cli.nome}</p>
-                <p class="text-[11px] text-slate-500">Pedido: ${p.dataPedido.split('-').reverse().join('/')} • Entrega: ${p.statusEntrega === 'ENTREGUE' ? 'Entregue' : 'Pendente'}</p>
+                <p class="text-[11px] text-slate-500">Pedido: ${p.dataPedido.split('-').reverse().join('/')} • Entrega: ${p.statusEntrega === 'ENTREGUE' ? 'Entregue' : 'Será Entregue'}</p>
               </div>
               <div class="text-right">
                 <strong>${formatMoney(p.valorTotal)}</strong>
@@ -1827,6 +2272,24 @@
             <strong>${formatMoney(Number(i.quantidade) * Number(i.custoUnitario))}</strong>
           </div>
         `).join("");
+      } else if (tipoRelatorioAtual === "SALGADOS_ESTOQUE") {
+        const estoqueAtualHtml = db.Produtos.map(pr => `
+          <div class="p-2.5 bg-white rounded-lg border border-slate-200 flex justify-between items-center">
+            <span class="font-bold text-slate-800">${pr.nome}</span>
+            <strong>Saldo: ${pr.quantidadeEstoque ?? 0}</strong>
+          </div>
+        `).join("");
+
+        const movHtml = histPeriodo.length === 0
+          ? `<p class="text-slate-400">Sem movimentações no período.</p>`
+          : histPeriodo.slice().reverse().map(h => `
+            <div class="flex justify-between py-1 border-b border-slate-200/70 last:border-0">
+              <span>${h.data.split('-').reverse().join('/')} • ${h.produtoNome} (${h.tipo})</span>
+              <strong class="${Number(h.quantidadeDelta) < 0 ? 'text-rose-600' : 'text-emerald-600'}">${Number(h.quantidadeDelta) > 0 ? '+' : ''}${h.quantidadeDelta} (Saldo: ${h.saldoApos})</strong>
+            </div>
+          `).join("");
+
+        box.innerHTML = `<p class="font-bold text-slate-900">Saldo Atual de Salgados</p>${estoqueAtualHtml}<p class="font-bold text-slate-900 pt-2">Histórico de Movimentações (${ini.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')})</p><div class="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">${movHtml}</div>`;
       }
     }
 
@@ -1844,10 +2307,12 @@
     }
 
     function closeModal() {
+      pararStreamCamera();
       document.getElementById("modalBackdrop").classList.add("hidden");
     }
 
     function renderAll() {
+      syncRegrasPontoInputs();
       renderPonto();
       renderPedidos();
       renderEstoque();
