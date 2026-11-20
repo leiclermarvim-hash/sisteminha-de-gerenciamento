@@ -5,27 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#ea580c" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>SalgadosPro - Gestão de Minifábrica</title>
-  
-  <!-- Tailwind CSS -->
+
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .adm-only { transition: all 0.2s ease; }
     body:not(.is-adm) .adm-only { display: none !important; }
     .glass-header { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(10px); }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 pb-24 select-none">
 
-  <!-- MANIFEST DINÂMICO PARA PWA -->
   <script>
     const manifest = {
       name: "Gestão Minifábrica de Salgados",
@@ -60,12 +55,10 @@
     </div>
 
     <div class="flex items-center gap-2">
-      <!-- Botão Sincronizar -->
       <button onclick="syncWithCloud()" title="Sincronizar Nuvem" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95 transition">
-        <i data-lucide="cloud-upload" class="w-5 h-5" id="syncIcon"></i>
+        <i data-lucide="cloud-upload" class="w-5 h-5"></i>
       </button>
-      
-      <!-- Botão Modo ADM / Operador -->
+
       <button onclick="toggleAdmModal()" id="admBadgeBtn" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white shadow-sm active:scale-95 transition">
         <i data-lucide="lock" class="w-4 h-4" id="admLockIcon"></i>
         <span id="admBtnText">Operador</span>
@@ -73,7 +66,7 @@
     </div>
   </header>
 
-  <!-- CONTEÚDO PRINCIPAL (VIEWS) -->
+  <!-- CONTEÚDO PRINCIPAL -->
   <main class="max-w-4xl mx-auto p-4 space-y-6">
 
     <!-- ==================== 1. ABA PONTO BIOMÉTRICO ==================== -->
@@ -81,7 +74,7 @@
       <div class="bg-gradient-to-br from-orange-600 to-amber-600 rounded-2xl p-5 text-white shadow-lg">
         <div class="flex justify-between items-start">
           <div>
-            <p class="text-orange-100 text-xs uppercase tracking-wider font-semibold">Controle de Frequência</p>
+            <p class="text-orange-100 text-xs uppercase tracking-wider font-semibold">Ponto por Reconhecimento de Digital</p>
             <h2 id="liveClock" class="text-3xl font-bold mt-1 tracking-tight">00:00:00</h2>
             <p id="liveDate" class="text-orange-100 text-sm mt-0.5">--/--/----</p>
           </div>
@@ -91,28 +84,31 @@
         </div>
 
         <div class="mt-5 bg-white/10 rounded-xl p-3.5 backdrop-blur-sm border border-white/15 space-y-3">
-          <label class="block text-xs font-medium text-orange-50">Selecione o Colaborador para Bater Ponto:</label>
-          <select id="pontoColaboradorSelect" class="w-full rounded-xl bg-white text-slate-900 px-3.5 py-3 text-sm font-medium focus:outline-none">
-            <option value="">-- Selecione seu nome --</option>
-          </select>
+          <p class="text-xs text-orange-50 text-center font-medium">
+            Encoste o dedo no sensor biométrico para identificar seu cadastro automaticamente:
+          </p>
 
           <div class="grid grid-cols-2 gap-2.5 pt-1">
-            <button onclick="registrarPontoBiometrico('ENTRADA')" class="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-4 rounded-xl shadow active:scale-95 transition text-sm">
-              <i data-lucide="log-in" class="w-4 h-4"></i> Entrada
+            <button onclick="baterPontoPorDigital('ENTRADA')" class="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3.5 px-4 rounded-xl shadow active:scale-95 transition text-sm">
+              <i data-lucide="fingerprint" class="w-5 h-5"></i> Entrada Digital
             </button>
-            <button onclick="registrarPontoBiometrico('SAIDA')" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-xl shadow active:scale-95 transition text-sm">
-              <i data-lucide="log-out" class="w-4 h-4"></i> Saída
+            <button onclick="baterPontoPorDigital('SAIDA')" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 px-4 rounded-xl shadow active:scale-95 transition text-sm">
+              <i data-lucide="fingerprint" class="w-5 h-5"></i> Saída Digital
             </button>
           </div>
+          <p id="biometriaFeedback" class="text-[11px] text-center text-orange-100 min-h-[16px]"></p>
         </div>
       </div>
 
-      <!-- Registros do Dia -->
-      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+      <!-- Registros do Dia (SOMENTE ADM) -->
+      <div id="cardPontoHojeAdm" class="adm-only bg-white rounded-2xl p-4 shadow-sm border-2 border-amber-300">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-            <i data-lucide="clock" class="w-4 h-4 text-orange-600"></i> Registros de Hoje
-          </h3>
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Visível Apenas ADM</span>
+            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2 mt-1">
+              <i data-lucide="clock" class="w-4 h-4 text-orange-600"></i> Registros de Hoje
+            </h3>
+          </div>
           <span id="hojeCountBadge" class="text-xs bg-orange-100 text-orange-700 font-semibold px-2.5 py-0.5 rounded-full">0 registros</span>
         </div>
         <div id="listaPontoHoje" class="space-y-2.5"></div>
@@ -123,14 +119,13 @@
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <span class="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Área Restrita ADM</span>
-            <h3 class="font-bold text-slate-900 text-base mt-1">Fechamento de Horas & Pagamentos</h3>
+            <h3 class="font-bold text-slate-900 text-base mt-1">Equipe, Digitais, Horas Extras & Pagamentos</h3>
           </div>
           <button onclick="abrirModalNovoColaborador()" class="bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1 shadow-sm">
             <i data-lucide="user-plus" class="w-4 h-4"></i> Equipe
           </button>
         </div>
 
-        <!-- Filtro de Período -->
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="text-[11px] font-semibold text-slate-500">Data Inicial</label>
@@ -148,14 +143,19 @@
 
     <!-- ==================== 2. ABA PEDIDOS & RECEBIMENTOS ==================== -->
     <section id="view-pedidos" class="view-section hidden space-y-4">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 class="text-lg font-bold text-slate-900">Pedidos & Vendas</h2>
-          <p class="text-xs text-slate-500">Entregas, cobranças fracionadas e WhatsApp</p>
+          <p class="text-xs text-slate-500">Entregas, faturamento fracionado, rotas e WhatsApp</p>
         </div>
-        <button onclick="abrirModalPedido()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition">
-          <i data-lucide="plus" class="w-4 h-4"></i> Novo Pedido
-        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="abrirRotaPedidosSelecionados()" id="btnRotaSelecionados" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition">
+            <i data-lucide="map-pin" class="w-4 h-4"></i> Deslocamento (<span id="qtdSelecionadosMapa">0</span>)
+          </button>
+          <button onclick="abrirModalPedido()" class="bg-orange-600 hover:bg-orange-700 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition">
+            <i data-lucide="plus" class="w-4 h-4"></i> Novo Pedido
+          </button>
+        </div>
       </div>
 
       <!-- Resumo Financeiro Pedidos (ADM) -->
@@ -176,10 +176,10 @@
 
       <!-- Filtros -->
       <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-        <button onclick="filtrarPedidos('TODOS')" class="pedido-filter-btn active px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-900 text-white">Todos</button>
-        <button onclick="filtrarPedidos('PENDENTE_ENTREGA')" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">A Entregar</button>
-        <button onclick="filtrarPedidos('PENDENTE_PAGAMENTO')" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">Pagamento Pendente</button>
-        <button onclick="filtrarPedidos('CONCLUIDO')" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">Quitados</button>
+        <button onclick="filtrarPedidos('TODOS', this)" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-900 text-white">Todos</button>
+        <button onclick="filtrarPedidos('PENDENTE_ENTREGA', this)" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">A Entregar</button>
+        <button onclick="filtrarPedidos('PENDENTE_PAGAMENTO', this)" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">Pagamento Pendente</button>
+        <button onclick="filtrarPedidos('CONCLUIDO', this)" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">Quitados</button>
       </div>
 
       <div id="listaPedidos" class="space-y-3"></div>
@@ -187,18 +187,16 @@
 
     <!-- ==================== 3. ABA MERCADORIAS & INSUMOS ==================== -->
     <section id="view-estoque" class="view-section hidden space-y-5">
-      <!-- Sub-tabs Estoque -->
       <div class="grid grid-cols-2 bg-slate-200/80 p-1 rounded-xl">
         <button onclick="switchEstoqueTab('insumos')" id="tabBtnInsumos" class="py-2 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition">Matéria-Prima (Insumos)</button>
         <button onclick="switchEstoqueTab('produtos')" id="tabBtnProdutos" class="py-2 text-xs font-bold rounded-lg text-slate-600 transition">Catálogo de Salgados</button>
       </div>
 
-      <!-- Matéria-Prima -->
       <div id="subview-insumos" class="space-y-3">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="font-bold text-slate-900 text-base">Estoque de Matéria-Prima</h3>
-            <p class="text-xs text-slate-500">Farinha, frango, óleo, embalagens e custos</p>
+            <p class="text-xs text-slate-500">Farinha, recheios, óleo, embalagens e valores</p>
           </div>
           <button onclick="abrirModalInsumo()" class="bg-orange-600 text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-sm">
             <i data-lucide="plus" class="w-4 h-4"></i> Cadastrar
@@ -207,7 +205,6 @@
         <div id="listaInsumos" class="space-y-2.5"></div>
       </div>
 
-      <!-- Catálogo de Salgados -->
       <div id="subview-produtos" class="hidden space-y-3">
         <div class="flex items-center justify-between">
           <div>
@@ -227,7 +224,7 @@
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-lg font-bold text-slate-900">Clientes & Empresas</h2>
-          <p class="text-xs text-slate-500">Contatos integrados ao WhatsApp</p>
+          <p class="text-xs text-slate-500">Endereços no Google Maps e envio via WhatsApp</p>
         </div>
         <button onclick="abrirModalCliente()" class="bg-orange-600 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm">
           <i data-lucide="user-plus" class="w-4 h-4"></i> Novo Cliente
@@ -241,13 +238,13 @@
 
     <!-- ==================== 5. ABA RELATÓRIOS & CONFIGURAÇÕES ==================== -->
     <section id="view-config" class="view-section hidden space-y-5">
-      
+
       <!-- Personalização do Estabelecimento (ADM) -->
       <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-4">
         <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
           <i data-lucide="store" class="w-5 h-5 text-orange-600"></i> Identidade da Minifábrica
         </h3>
-        
+
         <div class="flex items-center gap-4">
           <img id="configPreviewLogo" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='50' fill='%23ffedd5'/><text x='50' y='68' font-size='50' text-anchor='middle'>🥟</text></svg>" class="w-16 h-16 rounded-full object-cover border-2 border-orange-500" />
           <div class="flex-1">
@@ -258,7 +255,12 @@
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Nome do Estabelecimento</label>
-          <input type="text" id="cfgNomeEmpresa" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Ex: Rei do Salgado Ltda" />
+          <input type="text" id="cfgNomeEmpresa" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Endereço Base da Minifábrica (Origem no Google Maps)</label>
+          <input type="text" id="cfgEnderecoBase" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Ex: Rua Principal, 100, Centro" />
         </div>
 
         <div>
@@ -286,7 +288,6 @@
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">URL do Google Apps Script (Web App)</label>
           <input type="url" id="cfgGoogleScriptUrl" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono" placeholder="https://script.google.com/macros/s/.../exec" />
-          <p class="text-[11px] text-slate-400 mt-1">Ao conectar pela primeira vez, todos os dados locais serão enviados automaticamente para a planilha criada na sua conta Google.</p>
         </div>
 
         <div class="grid grid-cols-2 gap-2 pt-1">
@@ -304,19 +305,51 @@
         </div>
       </div>
 
-      <!-- Relatórios Gerenciais (ADM) -->
-      <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
-        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
-          <i data-lucide="bar-chart-3" class="w-5 h-5 text-orange-600"></i> Relatório Consolidado (ADM)
-        </h3>
-        <div id="relatorioGeralBox" class="text-xs space-y-2 text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200"></div>
+      <!-- Relatório Consolidado Avançado (ADM) -->
+      <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border-2 border-amber-400 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+            <i data-lucide="bar-chart-3" class="w-5 h-5 text-orange-600"></i> Relatório Consolidado (ADM)
+          </h3>
+        </div>
+
+        <!-- Filtros de Período -->
+        <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <label class="text-[11px] font-bold text-slate-600 uppercase">Período Rápido</label>
+          <div class="grid grid-cols-4 gap-1.5">
+            <button onclick="aplicarFiltroRelatorio('DIARIO')" class="py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:border-orange-500">Diário</button>
+            <button onclick="aplicarFiltroRelatorio('SEMANAL')" class="py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:border-orange-500">Semanal</button>
+            <button onclick="aplicarFiltroRelatorio('QUINZENAL')" class="py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:border-orange-500">Quinzenal</button>
+            <button onclick="aplicarFiltroRelatorio('MENSAL')" class="py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:border-orange-500">Mensal</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Data Inicial</label>
+              <input type="date" id="relDataInicio" onchange="renderRelatorioGeral()" class="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Data Final</label>
+              <input type="date" id="relDataFim" onchange="renderRelatorioGeral()" class="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Seletor do Tipo de Relatório -->
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
+          <button onclick="trocarTipoRelatorio('GERAL', this)" class="rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white">Geral</button>
+          <button onclick="trocarTipoRelatorio('COLABORADORES', this)" class="rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Colaboradores</button>
+          <button onclick="trocarTipoRelatorio('PEDIDOS', this)" class="rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Pedidos</button>
+          <button onclick="trocarTipoRelatorio('INSUMOS', this)" class="rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Insumos</button>
+        </div>
+
+        <div id="relatorioGeralBox" class="text-xs space-y-2.5 text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200"></div>
       </div>
 
     </section>
 
   </main>
 
-  <!-- NAVEGAÇÃO INFERIOR (BOTTOM BAR) -->
+  <!-- NAVEGAÇÃO INFERIOR -->
   <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center z-30 shadow-lg">
     <button onclick="switchTab('ponto')" class="nav-btn active flex flex-col items-center p-1.5 text-orange-600" data-tab="ponto">
       <i data-lucide="fingerprint" class="w-5 h-5"></i>
@@ -340,26 +373,25 @@
     </button>
   </nav>
 
-  <!-- ==================== MODAIS ==================== -->
+  <!-- MODAL -->
   <div id="modalBackdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div id="modalContent" class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto shadow-2xl space-y-4">
-      <!-- Conteúdo injetado dinamicamente -->
-    </div>
+    <div id="modalContent" class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto shadow-2xl space-y-4"></div>
   </div>
 
-  <!-- TOAST NOTIFICATION -->
-  <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl z-50 hidden transition-opacity"></div>
+  <!-- TOAST -->
+  <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl z-50 hidden"></div>
 
-  <!-- ==================== LÓGICA DO SISTEMA (JAVASCRIPT) ==================== -->
   <script>
-    // 1. ESTADO GLOBAL & BANCO DE DADOS LOCAL
-    const STORAGE_KEY = "salgados_pro_db_v1";
+    const STORAGE_KEY = "salgados_pro_db_v2";
     let isAdm = false;
     let pedidoFilter = "TODOS";
+    let tipoRelatorioAtual = "GERAL";
+    let pedidosSelecionadosIds = new Set();
 
     let db = {
       Config: [
         { chave: "nomeEmpresa", valor: "Minifábrica de Salgados" },
+        { chave: "enderecoBase", valor: "" },
         { chave: "logoBase64", valor: "" },
         { chave: "senhaAdm", valor: "1234" },
         { chave: "googleScriptUrl", valor: "" },
@@ -373,13 +405,13 @@
       Pedidos: []
     };
 
-    // Inicialização
     document.addEventListener("DOMContentLoaded", () => {
       loadLocalDB();
       seedInitialDataIfEmpty();
       applyBranding();
       startClock();
       setDefaultDates();
+      aplicarFiltroRelatorio('MENSAL', false);
       renderAll();
       lucide.createIcons();
     });
@@ -390,7 +422,7 @@
         try {
           const parsed = JSON.parse(saved);
           db = { ...db, ...parsed };
-        } catch (e) { console.error("Erro ao ler DB local", e); }
+        } catch (e) { console.error(e); }
       }
     }
 
@@ -418,33 +450,32 @@
         db.Produtos = [
           { id: uid(), nome: "Coxinha de Frango (Cento)", precoCento: 65.00, precoUnitario: 0.80, custoProducao: 28.00 },
           { id: uid(), nome: "Bolinha de Queijo (Cento)", precoCento: 65.00, precoUnitario: 0.80, custoProducao: 30.00 },
-          { id: uid(), nome: "Kibe Recheado (Cento)", precoCento: 70.00, precoUnitario: 0.90, custoProducao: 32.00 },
-          { id: uid(), nome: "Risole de Presunto e Queijo (Cento)", precoCento: 65.00, precoUnitario: 0.80, custoProducao: 29.00 }
+          { id: uid(), nome: "Kibe Recheado (Cento)", precoCento: 70.00, precoUnitario: 0.90, custoProducao: 32.00 }
         ];
         saveLocalDB(false);
       }
     }
 
     function uid() {
-      return Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+      return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
     }
 
     function showToast(msg) {
       const t = document.getElementById("toast");
       t.textContent = msg;
       t.classList.remove("hidden");
-      setTimeout(() => t.classList.add("hidden"), 3000);
+      setTimeout(() => t.classList.add("hidden"), 3200);
     }
 
     function formatMoney(val) {
       return Number(val || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
 
-    // 2. NAVEGAÇÃO E MODO ADM
+    // NAVEGAÇÃO & ADM
     function switchTab(tab) {
       document.querySelectorAll(".view-section").forEach(el => el.classList.add("hidden"));
       document.getElementById(`view-${tab}`).classList.remove("hidden");
-      
+
       document.querySelectorAll(".nav-btn").forEach(btn => {
         btn.classList.remove("text-orange-600", "active");
         btn.classList.add("text-slate-400");
@@ -452,7 +483,7 @@
       const activeBtn = document.querySelector(`.nav-btn[data-tab="${tab}"]`);
       activeBtn.classList.add("text-orange-600", "active");
       activeBtn.classList.remove("text-slate-400");
-      
+
       if (tab === "config") renderRelatorioGeral();
       lucide.createIcons();
     }
@@ -465,7 +496,7 @@
         document.getElementById("admLockIcon").setAttribute("data-lucide", "lock");
         document.getElementById("admBadgeBtn").classList.replace("bg-amber-600", "bg-slate-800");
         lucide.createIcons();
-        showToast("Modo Operador ativado. Dados financeiros ocultos.");
+        showToast("Modo Operador ativado.");
         return;
       }
 
@@ -475,7 +506,7 @@
             <i data-lucide="shield-check" class="w-6 h-6"></i>
           </div>
           <h3 class="font-bold text-lg text-slate-900">Acesso Administrativo</h3>
-          <p class="text-xs text-slate-500">Digite a senha de administrador para liberar folha salarial, valores, custos e configurações.</p>
+          <p class="text-xs text-slate-500">Digite a senha ADM para liberar registros de hoje, folha, relatórios e cadastros.</p>
           <input type="password" id="inputSenhaAdm" class="w-full border border-slate-300 rounded-xl px-4 py-3 text-center text-lg tracking-widest font-bold" placeholder="••••" onkeyup="if(event.key==='Enter') verificarSenhaAdm()" />
           <div class="grid grid-cols-2 gap-2 pt-2">
             <button onclick="closeModal()" class="py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm">Cancelar</button>
@@ -497,13 +528,13 @@
         document.getElementById("admBadgeBtn").classList.replace("bg-slate-800", "bg-amber-600");
         closeModal();
         renderAll();
-        showToast("Modo Administrador desbloqueado!");
+        showToast("Modo ADM desbloqueado!");
       } else {
         showToast("Senha incorreta!");
       }
     }
 
-    // 3. RELÓGIO E PONTO COM BIOMETRIA NATIVA (WEBAUTHN)
+    // RELÓGIO
     function startClock() {
       const update = () => {
         const now = new Date();
@@ -514,27 +545,41 @@
       setInterval(update, 1000);
     }
 
-    async function autenticarBiometriaDispositivo(colaboradorNome) {
-      // Verifica suporte à WebAuthn (Sensor biométrico do celular)
+    // =========================================================================
+    // BIOMETRIA POR DIGITAL VINCULADA AO ID DO COLABORADOR (WEBAUTHN)
+    // =========================================================================
+    function bufferToBase64(buf) {
+      return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    }
+
+    function base64ToBuffer(b64) {
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return arr.buffer;
+    }
+
+    async function capturarDigitalParaColaborador(colabId) {
+      const colab = db.Colaboradores.find(c => c.id === colabId);
+      if (!colab) return;
+
       if (!window.PublicKeyCredential) {
-        return confirm(`Sensor biométrico indisponível neste navegador. Confirmar identidade de ${colaboradorNome}?`);
+        return showToast("Este navegador/dispositivo não suporta WebAuthn biométrico.");
       }
 
       try {
         const challenge = new Uint8Array(32);
         window.crypto.getRandomValues(challenge);
-        const userId = new Uint8Array(16);
-        window.crypto.getRandomValues(userId);
+        const userIdBytes = new TextEncoder().encode(colab.id);
 
-        // Aciona o leitor biométrico nativo (Platform Authenticator: Digital / FaceID)
-        await navigator.credentials.create({
+        const cred = await navigator.credentials.create({
           publicKey: {
             challenge: challenge,
-            rp: { name: getConfig("nomeEmpresa") || "Minifabrica Salgados" },
+            rp: { name: getConfig("nomeEmpresa") || "SalgadosPro" },
             user: {
-              id: userId,
-              name: colaboradorNome,
-              displayName: colaboradorNome
+              id: userIdBytes,
+              name: `${colab.id}@salgadospro.local`,
+              displayName: colab.nome
             },
             pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
             authenticatorSelection: {
@@ -544,59 +589,104 @@
             timeout: 60000
           }
         });
-        return true;
+
+        colab.biometriaId = bufferToBase64(cred.rawId);
+        saveLocalDB();
+        showToast(`Digital vinculada ao ID de ${colab.nome}!`);
+        const badge = document.getElementById("modalDigitalStatus");
+        if (badge) {
+          badge.textContent = "✅ Digital cadastrada e vinculada ao ID";
+          badge.className = "text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200";
+        }
       } catch (err) {
-        console.warn("Biometria cancelada ou falhou:", err);
-        showToast("Autenticação biométrica cancelada ou não reconhecida.");
-        return false;
+        console.error(err);
+        showToast("Captura de digital cancelada ou não concluída.");
       }
     }
 
-    async function registrarPontoBiometrico(tipo) {
-      const colabId = document.getElementById("pontoColaboradorSelect").value;
-      if (!colabId) return showToast("Selecione seu nome antes de bater o ponto.");
+    async function baterPontoPorDigital(tipo) {
+      const feedback = document.getElementById("biometriaFeedback");
+      const cadastrados = db.Colaboradores.filter(c => c.ativo !== false && c.biometriaId);
 
-      const colab = db.Colaboradores.find(c => c.id === colabId);
-      if (!colab) return;
-
-      // Exige biometria do celular
-      const autenticado = await autenticarBiometriaDispositivo(colab.nome);
-      if (!autenticado) return;
-
-      const now = new Date();
-      const hojeStr = now.toISOString().split("T")[0];
-      const horaAtual = now.toTimeString().slice(0, 5);
-
-      if (tipo === "ENTRADA") {
-        // Verifica se já há entrada em aberto hoje
-        const aberto = db.Ponto.find(p => p.colaboradorId === colabId && p.data === hojeStr && !p.saida);
-        if (aberto) return showToast("Você já possui uma entrada em aberto hoje!");
-
-        db.Ponto.push({
-          id: uid(),
-          colaboradorId: colabId,
-          data: hojeStr,
-          entrada: horaAtual,
-          saida: "",
-          horasNormais: 0,
-          horasExtras: 0,
-          percentualExtra: 50,
-          valorCalculado: 0,
-          pago: false
-        });
-        showToast(`Entrada registrada para ${colab.nome} às ${horaAtual}!`);
-      } else {
-        // Busca entrada em aberto
-        const aberto = db.Ponto.find(p => p.colaboradorId === colabId && p.data === hojeStr && !p.saida);
-        if (!aberto) return showToast("Nenhuma entrada encontrada hoje para registrar saída.");
-
-        aberto.saida = horaAtual;
-        calcularHorasRegistro(aberto, colab);
-        showToast(`Saída registrada para ${colab.nome} às ${horaAtual}!`);
+      if (cadastrados.length === 0) {
+        feedback.textContent = "Nenhuma digital cadastrada ainda. Cadastre no menu ADM > Equipe.";
+        return showToast("Nenhuma digital cadastrada na equipe.");
       }
 
-      saveLocalDB();
-      renderPonto();
+      if (!window.PublicKeyCredential) {
+        return showToast("Leitor biométrico indisponível neste dispositivo.");
+      }
+
+      try {
+        feedback.textContent = "Aguardando leitura da digital no sensor...";
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+
+        const allowCredentials = cadastrados.map(c => ({
+          id: base64ToBuffer(c.biometriaId),
+          type: "public-key"
+        }));
+
+        const assertion = await navigator.credentials.get({
+          publicKey: {
+            challenge: challenge,
+            allowCredentials: allowCredentials,
+            userVerification: "required",
+            timeout: 60000
+          }
+        });
+
+        const credIdB64 = bufferToBase64(assertion.rawId);
+        const colab = db.Colaboradores.find(c => c.biometriaId === credIdB64);
+
+        if (!colab) {
+          feedback.textContent = "Digital não reconhecida entre os colaboradores.";
+          return showToast("Digital não cadastrada!");
+        }
+
+        const now = new Date();
+        const hojeStr = now.toISOString().split("T")[0];
+        const horaAtual = now.toTimeString().slice(0, 5);
+
+        if (tipo === "ENTRADA") {
+          const aberto = db.Ponto.find(p => p.colaboradorId === colab.id && p.data === hojeStr && !p.saida);
+          if (aberto) {
+            feedback.textContent = `${colab.nome} já possui entrada hoje às ${aberto.entrada}.`;
+            return showToast(`${colab.nome} já registrou entrada hoje.`);
+          }
+          db.Ponto.push({
+            id: uid(),
+            colaboradorId: colab.id,
+            data: hojeStr,
+            entrada: horaAtual,
+            saida: "",
+            horasNormais: 0,
+            horasExtras: 0,
+            percentualExtra: 50,
+            valorCalculado: 0,
+            pago: false
+          });
+          feedback.textContent = `Entrada registrada: ${colab.nome} às ${horaAtual}`;
+          showToast(`Entrada: ${colab.nome} (${horaAtual})`);
+        } else {
+          const aberto = db.Ponto.find(p => p.colaboradorId === colab.id && p.data === hojeStr && !p.saida);
+          if (!aberto) {
+            feedback.textContent = `Nenhuma entrada em aberto hoje para ${colab.nome}.`;
+            return showToast(`Sem entrada em aberto para ${colab.nome}.`);
+          }
+          aberto.saida = horaAtual;
+          calcularHorasRegistro(aberto, colab);
+          feedback.textContent = `Saída registrada: ${colab.nome} às ${horaAtual}`;
+          showToast(`Saída: ${colab.nome} (${horaAtual})`);
+        }
+
+        saveLocalDB();
+        renderPonto();
+      } catch (err) {
+        console.error(err);
+        feedback.textContent = "Leitura biométrica cancelada ou não reconhecida.";
+        showToast("Biometria não validada.");
+      }
     }
 
     function calcularHorasRegistro(registro, colab) {
@@ -604,9 +694,8 @@
       const [h1, m1] = registro.entrada.split(":").map(Number);
       const [h2, m2] = registro.saida.split(":").map(Number);
       let totalHoras = (h2 + m2 / 60) - (h1 + m1 / 60);
-      if (totalHoras < 0) totalHoras += 24; // virada de turno
+      if (totalHoras < 0) totalHoras += 24;
 
-      // Padrão de 8h diárias; o excedente vai para extra (ajustável pelo ADM)
       const normais = Math.min(totalHoras, 8);
       const extras = Math.max(0, totalHoras - 8);
       const perc = Number(registro.percentualExtra || 50);
@@ -618,14 +707,6 @@
     }
 
     function renderPonto() {
-      // Atualiza Select
-      const select = document.getElementById("pontoColaboradorSelect");
-      const currentVal = select.value;
-      select.innerHTML = `<option value="">-- Selecione seu nome --</option>` + 
-        db.Colaboradores.filter(c => c.ativo !== false).map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
-      select.value = currentVal;
-
-      // Lista de Hoje
       const hojeStr = new Date().toISOString().split("T")[0];
       const registrosHoje = db.Ponto.filter(p => p.data === hojeStr);
       document.getElementById("hojeCountBadge").textContent = `${registrosHoje.length} registros`;
@@ -686,8 +767,13 @@
           <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
             <div class="flex justify-between items-start">
               <div>
-                <h4 class="font-bold text-slate-900 text-sm">${colab.nome}</h4>
-                <p class="text-[11px] text-slate-500">Valor/Hora: <strong>${formatMoney(colab.valorHora)}</strong> • Pgto: <strong>${colab.formaPagamento || 'PIX'}</strong></p>
+                <div class="flex items-center gap-2">
+                  <h4 class="font-bold text-slate-900 text-sm">${colab.nome}</h4>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold ${colab.biometriaId ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
+                    ${colab.biometriaId ? 'Digital OK' : 'Sem Digital'}
+                  </span>
+                </div>
+                <p class="text-[11px] text-slate-500">ID: <span class="font-mono">${colab.id}</span> • Hora: <strong>${formatMoney(colab.valorHora)}</strong> • Pgto: <strong>${colab.formaPagamento || 'PIX'}</strong></p>
               </div>
               <div class="text-right">
                 <span class="text-xs text-slate-500 block">Total Período</span>
@@ -701,12 +787,15 @@
               <div><span class="text-amber-600 block text-[10px]">Extras</span><strong class="text-amber-600">${totalExtras.toFixed(1)}h</strong></div>
             </div>
 
-            <div class="flex gap-2 pt-1">
-              <button onclick="abrirDetalhesPontoColab('${colab.id}')" class="flex-1 bg-white border border-slate-300 text-slate-700 py-1.5 rounded-lg text-xs font-semibold">
-                Ajustar Extras / Dias
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <button onclick="abrirModalNovoColaborador('${colab.id}')" class="bg-white border border-slate-300 text-slate-700 py-1.5 rounded-lg text-xs font-semibold">
+                Editar / Digital
               </button>
-              <button onclick="enviarInformePagamentoWhatsApp('${colab.id}', ${totalNormais}, ${totalExtras}, ${totalPagar})" class="flex-1 bg-emerald-600 text-white py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
-                <i data-lucide="send" class="w-3.5 h-3.5"></i> Informe WhatsApp
+              <button onclick="abrirDetalhesPontoColab('${colab.id}')" class="bg-white border border-slate-300 text-slate-700 py-1.5 rounded-lg text-xs font-semibold">
+                Horas / Extras
+              </button>
+              <button onclick="enviarInformePagamentoWhatsApp('${colab.id}', ${totalNormais}, ${totalExtras}, ${totalPagar})" class="bg-emerald-600 text-white py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
+                <i data-lucide="send" class="w-3.5 h-3.5"></i> WhatsApp
               </button>
             </div>
           </div>
@@ -716,7 +805,9 @@
     }
 
     function abrirModalNovoColaborador(editId = null) {
-      const colab = editId ? db.Colaboradores.find(c => c.id === editId) : {};
+      const idAtual = editId || uid();
+      const colab = editId ? (db.Colaboradores.find(c => c.id === editId) || {}) : { id: idAtual };
+
       openModal(`
         <h3 class="font-bold text-lg text-slate-900">${editId ? 'Editar' : 'Novo'} Colaborador</h3>
         <div class="space-y-3 text-sm">
@@ -745,42 +836,63 @@
             </div>
             <div>
               <label class="text-xs font-semibold text-slate-600">Chave PIX / Conta</label>
-              <input type="text" id="colabPix" value="${colab.chavePix || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="CPF, Tel ou Email" />
+              <input type="text" id="colabPix" value="${colab.chavePix || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-2 pt-3">
+
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700">Biometria do Colaborador (ID: ${idAtual})</span>
+              <button type="button" onclick="salvarColaborador('${idAtual}', true)" class="bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1">
+                <i data-lucide="fingerprint" class="w-4 h-4"></i> Capturar Digital
+              </button>
+            </div>
+            <p id="modalDigitalStatus" class="text-xs ${colab.biometriaId ? 'text-emerald-700 font-semibold' : 'text-slate-500'}">
+              ${colab.biometriaId ? '✅ Digital já cadastrada e vinculada ao ID' : 'Nenhuma digital vinculada ainda'}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-2">
             <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
-            <button onclick="salvarColaborador('${editId || ''}')" class="py-2.5 bg-orange-600 text-white rounded-xl font-semibold">Salvar</button>
+            <button onclick="salvarColaborador('${idAtual}', false)" class="py-2.5 bg-slate-900 text-white rounded-xl font-semibold">Salvar</button>
           </div>
         </div>
       `);
     }
 
-    function salvarColaborador(editId) {
+    async function salvarColaborador(colabId, capturarEmSeguida = false) {
       const nome = document.getElementById("colabNome").value.trim();
       if (!nome) return showToast("Informe o nome do colaborador.");
 
+      const existente = db.Colaboradores.find(c => c.id === colabId);
       const obj = {
-        id: editId || uid(),
+        id: colabId,
         nome,
         telefone: document.getElementById("colabTel").value.trim(),
         valorHora: parseFloat(document.getElementById("colabValorHora").value) || 0,
         formaPagamento: document.getElementById("colabFormaPgto").value,
         chavePix: document.getElementById("colabPix").value.trim(),
+        biometriaId: existente?.biometriaId || "",
         ativo: true
       };
 
-      if (editId) {
-        const idx = db.Colaboradores.findIndex(c => c.id === editId);
+      if (existente) {
+        const idx = db.Colaboradores.findIndex(c => c.id === colabId);
         db.Colaboradores[idx] = obj;
       } else {
         db.Colaboradores.push(obj);
       }
 
       saveLocalDB();
-      closeModal();
       renderPonto();
-      showToast("Colaborador salvo!");
+
+      if (capturarEmSeguida) {
+        await capturarDigitalParaColaborador(colabId);
+        renderPonto();
+      } else {
+        closeModal();
+        showToast("Colaborador salvo!");
+      }
     }
 
     function abrirDetalhesPontoColab(colabId) {
@@ -790,10 +902,7 @@
       const pontos = db.Ponto.filter(p => p.colaboradorId === colabId && (!ini || p.data >= ini) && (!fim || p.data <= fim));
 
       openModal(`
-        <div class="flex justify-between items-center">
-          <h3 class="font-bold text-base text-slate-900">Frequência: ${colab.nome}</h3>
-          <button onclick="abrirModalNovoColaborador('${colab.id}')" class="text-xs text-orange-600 font-semibold underline">Editar Cadastro</button>
-        </div>
+        <h3 class="font-bold text-base text-slate-900">Horas & Extras: ${colab.nome}</h3>
         <div class="space-y-2.5 max-h-80 overflow-y-auto">
           ${pontos.length === 0 ? '<p class="text-xs text-slate-400">Nenhum registro no período.</p>' : pontos.map(p => `
             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
@@ -839,20 +948,60 @@
       const colab = db.Colaboradores.find(c => c.id === colabId);
       if (!colab || !colab.telefone) return showToast("Colaborador sem telefone cadastrado.");
       const empresa = getConfig("nomeEmpresa");
-      const msg = `*${empresa} - Informe de Pagamento*\n\nOlá, *${colab.nome}*!\nSegue o resumo das suas horas no período:\n• Horas Normais: ${normais.toFixed(1)}h\n• Horas Extras: ${extras.toFixed(1)}h\n• Valor/Hora: ${formatMoney(colab.valorHora)}\n• Forma de Pgto: ${colab.formaPagamento} ${colab.chavePix ? '('+colab.chavePix+')' : ''}\n\n*Total a Receber: ${formatMoney(total)}*`;
+      const msg = `*${empresa} - Informe de Pagamento*\n\nOlá, *${colab.nome}*!\n• Horas Normais: ${normais.toFixed(1)}h\n• Horas Extras: ${extras.toFixed(1)}h\n• Valor/Hora: ${formatMoney(colab.valorHora)}\n• Forma de Pgto: ${colab.formaPagamento} ${colab.chavePix ? '('+colab.chavePix+')' : ''}\n\n*Total a Receber: ${formatMoney(total)}*`;
       abrirWhatsApp(colab.telefone, msg);
     }
 
-    // 4. PEDIDOS, ENTREGA E RECEBIMENTO FRACIONADO
-    function filtrarPedidos(status) {
+    // =========================================================================
+    // PEDIDOS, FILTRO QUITADOS, BOTÃO "FATURAR" E GOOGLE MAPS
+    // =========================================================================
+    function filtrarPedidos(status, btnEl) {
       pedidoFilter = status;
       document.querySelectorAll(".pedido-filter-btn").forEach(b => {
         b.classList.remove("bg-slate-900", "text-white");
-        b.classList.add("bg-white", "text-slate-600");
+        b.classList.add("bg-white", "text-slate-600", "border", "border-slate-200");
       });
-      event.target.classList.add("bg-slate-900", "text-white");
-      event.target.classList.remove("bg-white", "text-slate-600");
+      if (btnEl) {
+        btnEl.classList.add("bg-slate-900", "text-white");
+        btnEl.classList.remove("bg-white", "text-slate-600", "border", "border-slate-200");
+      }
       renderPedidos();
+    }
+
+    function toggleSelecaoPedidoMapa(pedidoId, checked) {
+      if (checked) pedidosSelecionadosIds.add(pedidoId);
+      else pedidosSelecionadosIds.delete(pedidoId);
+      document.getElementById("qtdSelecionadosMapa").textContent = pedidosSelecionadosIds.size;
+    }
+
+    function abrirMapaEndereco(endereco) {
+      if (!endereco || !endereco.trim()) return showToast("Endereço não cadastrado para este cliente.");
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco.trim())}`;
+      window.open(url, "_blank");
+    }
+
+    function abrirRotaPedidosSelecionados() {
+      const ids = Array.from(pedidosSelecionadosIds);
+      if (ids.length === 0) return showToast("Selecione pelo menos um pedido na caixinha para deslocamento.");
+
+      const destinos = ids.map(id => {
+        const p = db.Pedidos.find(x => x.id === id);
+        const cli = db.Clientes.find(c => c.id === p?.clienteId);
+        return (cli?.endereco || "").trim();
+      }).filter(Boolean);
+
+      if (destinos.length === 0) return showToast("Os pedidos selecionados não possuem endereço cadastrado.");
+
+      const origem = encodeURIComponent((getConfig("enderecoBase") || "").trim());
+      if (destinos.length === 1) {
+        const base = origem ? `&origin=${origem}` : "";
+        window.open(`https://www.google.com/maps/dir/?api=1${base}&destination=${encodeURIComponent(destinos[0])}&travelmode=driving`, "_blank");
+      } else {
+        const destination = encodeURIComponent(destinos[destinos.length - 1]);
+        const waypoints = encodeURIComponent(destinos.slice(0, -1).join("|"));
+        const base = origem ? `&origin=${origem}` : "";
+        window.open(`https://www.google.com/maps/dir/?api=1${base}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`, "_blank");
+      }
     }
 
     function renderPedidos() {
@@ -863,12 +1012,17 @@
       });
       document.getElementById("kpiTotalVendido").textContent = formatMoney(totalVendido);
       document.getElementById("kpiTotalRecebido").textContent = formatMoney(totalRecebido);
-      document.getElementById("kpiTotalAReceber").textContent = formatMoney(totalVendido - totalRecebido);
+      document.getElementById("kpiTotalAReceber").textContent = formatMoney(Math.max(0, totalVendido - totalRecebido));
 
       let lista = [...db.Pedidos].reverse();
-      if (pedidoFilter === "PENDENTE_ENTREGA") lista = lista.filter(p => p.statusEntrega !== "ENTREGUE");
-      if (pedidoFilter === "PENDENTE_PAGAMENTO") lista = lista.filter(p => (p.valorTotal - p.valorPago) > 0.01);
-      if (pedidoFilter === "CONCLUIDO") lista = lista.filter(p => (p.valorTotal - p.valorPago) <= 0.01 && p.statusEntrega === "ENTREGUE");
+      if (pedidoFilter === "PENDENTE_ENTREGA") {
+        lista = lista.filter(p => p.statusEntrega !== "ENTREGUE");
+      } else if (pedidoFilter === "PENDENTE_PAGAMENTO") {
+        lista = lista.filter(p => (Number(p.valorTotal) - Number(p.valorPago)) > 0.01);
+      } else if (pedidoFilter === "CONCLUIDO") {
+        // Correção: exibe pedidos quitados mesmo se ainda não entregues
+        lista = lista.filter(p => (Number(p.valorTotal) - Number(p.valorPago)) <= 0.01);
+      }
 
       const container = document.getElementById("listaPedidos");
       if (lista.length === 0) {
@@ -877,24 +1031,34 @@
       }
 
       container.innerHTML = lista.map(p => {
-        const cliente = db.Clientes.find(c => c.id === p.clienteId) || { nome: "Cliente Avulso", telefone: "" };
+        const cliente = db.Clientes.find(c => c.id === p.clienteId) || { nome: "Cliente Avulso", telefone: "", endereco: "" };
         const restante = Math.max(0, Number(p.valorTotal) - Number(p.valorPago));
         const quitado = restante <= 0.01;
         const itensTexto = (p.itensJson || []).map(i => `${i.qtd}x ${i.nome}`).join(", ");
+        const checked = pedidosSelecionadosIds.has(p.id) ? "checked" : "";
 
         return `
           <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
-            <div class="flex justify-between items-start">
-              <div>
-                <div class="flex items-center gap-2">
-                  <h4 class="font-bold text-slate-900 text-sm">${cliente.nome}</h4>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${p.statusEntrega === 'ENTREGUE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}">
-                    ${p.statusEntrega === 'ENTREGUE' ? 'Entregue' : 'A Entregar'}
-                  </span>
+            <div class="flex justify-between items-start gap-2">
+              <div class="flex items-start gap-2.5">
+                <input type="checkbox" ${checked} onchange="toggleSelecaoPedidoMapa('${p.id}', this.checked)" class="mt-1 w-4 h-4 accent-blue-600 rounded cursor-pointer" title="Selecionar para deslocamento" />
+                <div>
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <h4 class="font-bold text-slate-900 text-sm">${cliente.nome}</h4>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${p.statusEntrega === 'ENTREGUE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}">
+                      ${p.statusEntrega === 'ENTREGUE' ? 'Entregue' : 'A Entregar'}
+                    </span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-1">${itensTexto}</p>
+                  ${cliente.endereco ? `
+                    <button onclick="abrirMapaEndereco('${cliente.endereco.replace(/'/g, "\\'")}')" class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline">
+                      <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> ${cliente.endereco} (Maps)
+                    </button>
+                  ` : `<span class="text-[11px] text-slate-400 block mt-1">Sem endereço cadastrado</span>`}
                 </div>
-                <p class="text-xs text-slate-500 mt-1">${itensTexto}</p>
               </div>
-              <div class="text-right">
+
+              <div class="text-right shrink-0">
                 <span class="font-bold text-slate-900 text-sm block">${formatMoney(p.valorTotal)}</span>
                 <span class="text-[11px] font-semibold ${quitado ? 'text-emerald-600' : 'text-rose-600'}">
                   ${quitado ? 'Quitado' : 'Falta: ' + formatMoney(restante)}
@@ -904,16 +1068,18 @@
 
             <div class="flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-3 py-2 rounded-xl">
               <span>📦 Entrega: <strong>${p.dataEntrega ? p.dataEntrega.split('-').reverse().join('/') : '--'}</strong></span>
-              <span>💰 Receber em: <strong>${p.dataVencimento ? p.dataVencimento.split('-').reverse().join('/') : '--'}</strong></span>
+              <span>💰 Receber: <strong>${p.dataVencimento ? p.dataVencimento.split('-').reverse().join('/') : '--'}</strong></span>
             </div>
 
             <div class="grid grid-cols-3 gap-2 pt-1">
               <button onclick="alternarStatusEntrega('${p.id}')" class="py-2 px-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50">
                 ${p.statusEntrega === 'ENTREGUE' ? 'Reabrir Entrega' : 'Marcar Entregue'}
               </button>
-              <button onclick="abrirModalPagamentoFracionado('${p.id}')" class="py-2 px-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
-                Receber (${(p.pagamentosJson || []).length})
+
+              <button onclick="abrirModalPagamentoFracionado('${p.id}')" ${quitado ? 'disabled' : ''} class="py-2 px-2 rounded-xl text-xs font-semibold transition ${quitado ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100'}">
+                ${quitado ? 'Faturado' : 'Faturar (' + (p.pagamentosJson || []).length + ')'}
               </button>
+
               <button onclick="enviarPedidoWhatsApp('${p.id}')" class="py-2 px-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold flex items-center justify-center gap-1">
                 <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp
               </button>
@@ -936,7 +1102,7 @@
             <label class="text-xs font-semibold text-slate-600">Cliente / Empresa</label>
             <select id="pedCliente" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1">
               <option value="">-- Selecione o Cliente --</option>
-              ${db.Clientes.map(c => `<option value="${c.id}">${c.nome} ${c.telefone ? '('+c.telefone+')' : ''}</option>`).join("")}
+              ${db.Clientes.map(c => `<option value="${c.id}">${c.nome} ${c.endereco ? '- ' + c.endereco : ''}</option>`).join("")}
             </select>
           </div>
 
@@ -951,7 +1117,6 @@
             </div>
           </div>
 
-          <!-- Adicionar Produtos -->
           <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
             <label class="text-xs font-bold text-slate-700 block">Adicionar Salgados ao Pedido</label>
             <div class="flex gap-2">
@@ -1022,8 +1187,9 @@
 
       const pagamentos = [];
       if (sinal > 0) {
-        pagamentos.push({ data: hoje, valor: sinal, obs: "Sinal / Entrada" });
+        pagamentos.push({ data: hoje, valor: Math.min(sinal, valorTotal), obs: "Sinal / Entrada" });
       }
+      const totalPago = pagamentos.reduce((s, x) => s + x.valor, 0);
 
       db.Pedidos.push({
         id: uid(),
@@ -1033,7 +1199,7 @@
         dataVencimento: document.getElementById("pedDataVenc").value,
         itensJson: carrinhoPedido,
         valorTotal,
-        valorPago: sinal,
+        valorPago: totalPago,
         pagamentosJson: pagamentos,
         statusEntrega: "PENDENTE",
         observacoes: ""
@@ -1042,7 +1208,7 @@
       saveLocalDB();
       closeModal();
       renderPedidos();
-      showToast("Pedido registrado com sucesso!");
+      showToast("Pedido salvo!");
     }
 
     function alternarStatusEntrega(pedidoId) {
@@ -1056,11 +1222,12 @@
     function abrirModalPagamentoFracionado(pedidoId) {
       const p = db.Pedidos.find(x => x.id === pedidoId);
       if (!p) return;
-      const restante = Math.max(0, p.valorTotal - p.valorPago);
+      const restante = Math.max(0, Number(p.valorTotal) - Number(p.valorPago));
+      if (restante <= 0.01) return showToast("Este pedido já está quitado.");
       const hoje = new Date().toISOString().split("T")[0];
 
       openModal(`
-        <h3 class="font-bold text-lg text-slate-900">Controle de Recebimento</h3>
+        <h3 class="font-bold text-lg text-slate-900">Faturar Pedido</h3>
         <div class="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl text-center text-xs border border-slate-200">
           <div><span class="text-slate-500 block">Total</span><strong>${formatMoney(p.valorTotal)}</strong></div>
           <div><span class="text-emerald-600 block">Já Pago</span><strong class="text-emerald-700">${formatMoney(p.valorPago)}</strong></div>
@@ -1068,8 +1235,8 @@
         </div>
 
         <div class="space-y-2">
-          <p class="text-xs font-bold text-slate-700">Histórico de Parcelas Recebidas:</p>
-          ${(p.pagamentosJson || []).length === 0 ? '<p class="text-xs text-slate-400">Nenhum pagamento registrado ainda.</p>' : 
+          <p class="text-xs font-bold text-slate-700">Parcelas / Faturamentos Registrados:</p>
+          ${(p.pagamentosJson || []).length === 0 ? '<p class="text-xs text-slate-400">Nenhum faturamento registrado ainda.</p>' :
             p.pagamentosJson.map(pg => `
               <div class="flex justify-between text-xs bg-emerald-50/70 px-3 py-2 rounded-lg border border-emerald-100">
                 <span>📅 ${pg.data.split('-').reverse().join('/')} (${pg.obs || 'Parcela'})</span>
@@ -1078,23 +1245,21 @@
             `).join("")}
         </div>
 
-        ${restante > 0.01 ? `
-          <div class="border-t border-slate-200 pt-3 space-y-2.5">
-            <p class="text-xs font-bold text-slate-800">Registrar Novo Recebimento Fracionado:</p>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-[11px] text-slate-500">Valor Recebido (R$)</label>
-                <input type="number" step="0.01" id="novoPgtoValor" value="${restante.toFixed(2)}" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold" />
-              </div>
-              <div>
-                <label class="text-[11px] text-slate-500">Data do Recebimento</label>
-                <input type="date" id="novoPgtoData" value="${hoje}" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
-              </div>
+        <div class="border-t border-slate-200 pt-3 space-y-2.5">
+          <p class="text-xs font-bold text-slate-800">Registrar Faturamento (Total ou Parcial):</p>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] text-slate-500">Valor a Faturar (R$)</label>
+              <input type="number" step="0.01" max="${restante.toFixed(2)}" id="novoPgtoValor" value="${restante.toFixed(2)}" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold" />
             </div>
-            <input type="text" id="novoPgtoObs" placeholder="Forma (PIX, Dinheiro, etc.)" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs" />
-            <button onclick="registrarParcelaPedido('${p.id}')" class="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold">Confirmar Recebimento</button>
+            <div>
+              <label class="text-[11px] text-slate-500">Data</label>
+              <input type="date" id="novoPgtoData" value="${hoje}" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+            </div>
           </div>
-        ` : '<div class="p-3 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl text-center">Pedido 100% Quitado!</div>'}
+          <input type="text" id="novoPgtoObs" placeholder="Forma (PIX, Dinheiro, Cartão...)" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs" />
+          <button onclick="registrarParcelaPedido('${p.id}')" class="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold">Confirmar Faturamento</button>
+        </div>
 
         <button onclick="closeModal()" class="w-full py-2 bg-slate-100 rounded-xl text-xs font-semibold text-slate-700">Fechar</button>
       `);
@@ -1102,21 +1267,23 @@
 
     function registrarParcelaPedido(pedidoId) {
       const p = db.Pedidos.find(x => x.id === pedidoId);
+      const restante = Math.max(0, Number(p.valorTotal) - Number(p.valorPago));
       const val = parseFloat(document.getElementById("novoPgtoValor").value) || 0;
       if (val <= 0) return showToast("Informe um valor válido.");
+      if (val > restante + 0.01) return showToast(`Valor excede o saldo restante (${formatMoney(restante)}).`);
 
       p.pagamentosJson = p.pagamentosJson || [];
       p.pagamentosJson.push({
         data: document.getElementById("novoPgtoData").value,
-        valor: val,
-        obs: document.getElementById("novoPgtoObs").value || "Pagamento parcial"
+        valor: Math.min(val, restante),
+        obs: document.getElementById("novoPgtoObs").value || "Faturamento"
       });
-      p.valorPago = p.pagamentosJson.reduce((acc, item) => acc + Number(item.valor), 0);
+      p.valorPago = Number(p.pagamentosJson.reduce((acc, item) => acc + Number(item.valor), 0).toFixed(2));
 
       saveLocalDB();
       closeModal();
       renderPedidos();
-      showToast("Pagamento registrado!");
+      showToast("Pedido faturado!");
     }
 
     function enviarPedidoWhatsApp(pedidoId) {
@@ -1126,24 +1293,23 @@
 
       const empresa = getConfig("nomeEmpresa");
       const itens = (p.itensJson || []).map(i => `• ${i.qtd}x ${i.nome}: ${formatMoney(i.subtotal)}`).join("\n");
-      const restante = Math.max(0, p.valorTotal - p.valorPago);
+      const restante = Math.max(0, Number(p.valorTotal) - Number(p.valorPago));
       const dataEnt = p.dataEntrega ? p.dataEntrega.split('-').reverse().join('/') : 'A combinar';
       const dataVenc = p.dataVencimento ? p.dataVencimento.split('-').reverse().join('/') : 'Na entrega';
 
-      let msg = `*${empresa} - Resumo do Pedido*\n\nOlá, *${cliente.nome}*!\nSegue o detalhamento do seu pedido:\n\n${itens}\n\n*Valor Total:* ${formatMoney(p.valorTotal)}\n*Valor Pago:* ${formatMoney(p.valorPago)}\n*Saldo Restante:* ${formatMoney(restante)}\n\n📦 *Entrega:* ${dataEnt}\n💰 *Vencimento:* ${dataVenc}`;
-      
+      const msg = `*${empresa} - Resumo do Pedido*\n\nOlá, *${cliente.nome}*!\n${itens}\n\n*Total:* ${formatMoney(p.valorTotal)}\n*Pago:* ${formatMoney(p.valorPago)}\n*Falta:* ${formatMoney(restante)}\n\n📦 *Entrega:* ${dataEnt}${cliente.endereco ? ' ('+cliente.endereco+')' : ''}\n💰 *Recebimento:* ${dataVenc}`;
       abrirWhatsApp(cliente.telefone, msg);
     }
 
-    // 5. MATÉRIA-PRIMA (INSUMOS) E PRODUTOS
+    // ESTOQUE
     function switchEstoqueTab(sub) {
       document.getElementById("subview-insumos").classList.toggle("hidden", sub !== "insumos");
       document.getElementById("subview-produtos").classList.toggle("hidden", sub !== "produtos");
-      
-      document.getElementById("tabBtnInsumos").className = sub === "insumos" 
+
+      document.getElementById("tabBtnInsumos").className = sub === "insumos"
         ? "py-2 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition"
         : "py-2 text-xs font-bold rounded-lg text-slate-600 transition";
-      document.getElementById("tabBtnProdutos").className = sub === "produtos" 
+      document.getElementById("tabBtnProdutos").className = sub === "produtos"
         ? "py-2 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition"
         : "py-2 text-xs font-bold rounded-lg text-slate-600 transition";
     }
@@ -1162,7 +1328,7 @@
                   <h4 class="font-bold text-sm text-slate-900">${ins.nome}</h4>
                   ${baixo ? '<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Estoque Baixo</span>' : ''}
                 </div>
-                <p class="text-xs text-slate-500 mt-0.5">Qtd: <strong>${ins.quantidade} ${ins.unidade}</strong> <span class="adm-only">• Custo Unit: <strong>${formatMoney(ins.custoUnitario)}</strong></span></p>
+                <p class="text-xs text-slate-500 mt-0.5">Qtd: <strong>${ins.quantidade} ${ins.unidade}</strong> <span class="adm-only">• Valor Unit: <strong>${formatMoney(ins.custoUnitario)}</strong> • Total: <strong>${formatMoney(Number(ins.quantidade) * Number(ins.custoUnitario))}</strong></span></p>
               </div>
               <div class="flex items-center gap-1.5">
                 <button onclick="ajustarQtdInsumo('${ins.id}', -1)" class="w-8 h-8 rounded-lg bg-slate-100 font-bold text-slate-700">-</button>
@@ -1179,7 +1345,7 @@
         <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex justify-between items-center shadow-sm">
           <div>
             <h4 class="font-bold text-sm text-slate-900">${pr.nome}</h4>
-            <p class="text-xs text-slate-500 mt-0.5">Venda: <strong class="text-emerald-700">${formatMoney(pr.precoCento)}</strong> <span class="adm-only">• Custo Prod: <strong>${formatMoney(pr.custoProducao)}</strong></span></p>
+            <p class="text-xs text-slate-500 mt-0.5">Venda: <strong class="text-emerald-700">${formatMoney(pr.precoCento)}</strong> <span class="adm-only">• Custo: <strong>${formatMoney(pr.custoProducao)}</strong></span></p>
           </div>
           <button onclick="abrirModalProduto('${pr.id}')" class="p-2 text-slate-400 hover:text-slate-700"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
         </div>
@@ -1206,7 +1372,7 @@
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-xs font-semibold text-slate-600">Quantidade Atual</label>
+              <label class="text-xs font-semibold text-slate-600">Quantidade</label>
               <input type="number" step="0.1" id="insQtd" value="${ins.quantidade || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
             </div>
             <div>
@@ -1221,7 +1387,7 @@
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-xs font-semibold text-slate-600">Valor Pago / Unitário (R$)</label>
+              <label class="text-xs font-semibold text-slate-600">Valor Unitário (R$)</label>
               <input type="number" step="0.01" id="insCusto" value="${ins.custoUnitario || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
             </div>
             <div>
@@ -1257,7 +1423,7 @@
       saveLocalDB();
       closeModal();
       renderEstoque();
-      showToast("Matéria-prima salva!");
+      showToast("Insumo salvo!");
     }
 
     function abrirModalProduto(editId = null) {
@@ -1267,7 +1433,7 @@
         <div class="space-y-3 text-sm">
           <div>
             <label class="text-xs font-semibold text-slate-600">Nome do Produto</label>
-            <input type="text" id="prNome" value="${pr.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="Ex: Coxinha de Carne Seca (Cento)" />
+            <input type="text" id="prNome" value="${pr.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -1309,10 +1475,10 @@
       showToast("Produto salvo!");
     }
 
-    // 6. CLIENTES & EMPRESAS
+    // CLIENTES
     function renderClientes() {
       const termo = (document.getElementById("buscaClienteInput").value || "").toLowerCase();
-      const filtrados = db.Clientes.filter(c => c.nome.toLowerCase().includes(termo) || (c.telefone || "").includes(termo));
+      const filtrados = db.Clientes.filter(c => c.nome.toLowerCase().includes(termo) || (c.telefone || "").includes(termo) || (c.endereco || "").toLowerCase().includes(termo));
       const container = document.getElementById("listaClientes");
 
       if (filtrados.length === 0) {
@@ -1321,7 +1487,7 @@
       }
 
       container.innerHTML = filtrados.map(c => `
-        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex justify-between items-center shadow-sm">
+        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex justify-between items-center shadow-sm gap-2">
           <div>
             <div class="flex items-center gap-2">
               <h4 class="font-bold text-sm text-slate-900">${c.nome}</h4>
@@ -1329,8 +1495,9 @@
             </div>
             <p class="text-xs text-slate-500 mt-0.5">${c.telefone || 'Sem telefone'} ${c.endereco ? '• ' + c.endereco : ''}</p>
           </div>
-          <div class="flex items-center gap-1.5">
-            ${c.telefone ? `<button onclick="abrirWhatsApp('${c.telefone}', 'Olá ${c.nome}, tudo bem?')" class="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="message-circle" class="w-4 h-4"></i></button>` : ''}
+          <div class="flex items-center gap-1.5 shrink-0">
+            ${c.endereco ? `<button onclick="abrirMapaEndereco('${c.endereco.replace(/'/g, "\\'")}')" title="Ver no Google Maps" class="p-2 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="map-pin" class="w-4 h-4"></i></button>` : ''}
+            ${c.telefone ? `<button onclick="abrirWhatsApp('${c.telefone}', 'Olá ${c.nome}, tudo bem?')" title="WhatsApp" class="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="message-circle" class="w-4 h-4"></i></button>` : ''}
             <button onclick="abrirModalCliente('${c.id}')" class="p-2 text-slate-400 hover:text-slate-700"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
           </div>
         </div>
@@ -1345,7 +1512,7 @@
         <div class="space-y-3 text-sm">
           <div>
             <label class="text-xs font-semibold text-slate-600">Nome ou Razão Social</label>
-            <input type="text" id="cliNome" value="${cli.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="Ex: Lanchonete Central" />
+            <input type="text" id="cliNome" value="${cli.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -1357,7 +1524,7 @@
             </div>
             <div>
               <label class="text-xs font-semibold text-slate-600">WhatsApp (com DDD)</label>
-              <input type="tel" id="cliTel" value="${cli.telefone || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="22999999999" />
+              <input type="tel" id="cliTel" value="${cli.telefone || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
             </div>
           </div>
           <div>
@@ -1365,8 +1532,8 @@
             <input type="text" id="cliDoc" value="${cli.documento || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
           </div>
           <div>
-            <label class="text-xs font-semibold text-slate-600">Endereço de Entrega</label>
-            <input type="text" id="cliEnd" value="${cli.endereco || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            <label class="text-xs font-semibold text-slate-600">Endereço Completo (Google Maps)</label>
+            <input type="text" id="cliEnd" value="${cli.endereco || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="Rua, número, bairro, cidade" />
           </div>
           <div class="grid grid-cols-2 gap-2 pt-2">
             <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
@@ -1396,18 +1563,20 @@
       saveLocalDB();
       closeModal();
       renderClientes();
-      showToast("Cliente cadastrado!");
+      showToast("Cliente salvo!");
     }
 
-    // 7. CONFIGURAÇÕES, BRANDING E INTEGRAÇÃO GOOGLE CLOUD
+    // CONFIGURAÇÕES, BRANDING & NUVEM
     function applyBranding() {
       const nome = getConfig("nomeEmpresa") || "Minifábrica de Salgados";
+      const endBase = getConfig("enderecoBase") || "";
       const logo = getConfig("logoBase64");
       const scriptUrl = getConfig("googleScriptUrl");
       const sheetUrl = getConfig("sheetUrl");
 
       document.getElementById("headerTitle").textContent = nome;
       document.getElementById("cfgNomeEmpresa").value = nome;
+      document.getElementById("cfgEnderecoBase").value = endBase;
       document.getElementById("cfgGoogleScriptUrl").value = scriptUrl;
 
       if (logo) {
@@ -1425,17 +1594,14 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(evt) {
-        // Redimensiona imagem para não pesar no localStorage/Google Sheets
         const img = new Image();
         img.onload = function() {
           const canvas = document.createElement("canvas");
           const size = 160;
           canvas.width = size;
           canvas.height = size;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, size, size);
-          const compressed = canvas.toDataURL("image/jpeg", 0.8);
-          setConfig("logoBase64", compressed);
+          canvas.getContext("2d").drawImage(img, 0, 0, size, size);
+          setConfig("logoBase64", canvas.toDataURL("image/jpeg", 0.8));
           applyBranding();
           saveLocalDB();
           showToast("Logo atualizada!");
@@ -1447,10 +1613,12 @@
 
     function salvarConfiguracoes() {
       const nome = document.getElementById("cfgNomeEmpresa").value.trim();
+      const endBase = document.getElementById("cfgEnderecoBase").value.trim();
       const novaSenha = document.getElementById("cfgSenhaAdm").value.trim();
       if (nome) setConfig("nomeEmpresa", nome);
+      setConfig("enderecoBase", endBase);
       if (novaSenha) setConfig("senhaAdm", novaSenha);
-      
+
       applyBranding();
       saveLocalDB();
       showToast("Configurações salvas!");
@@ -1464,27 +1632,23 @@
 
       updateSyncStatus("syncing");
       try {
-        // 1. Verifica se já existem dados na nuvem
         const getRes = await fetch(url);
         const getJson = await getRes.json();
 
         if (getJson.status === "success" && getJson.data) {
           const cloudData = getJson.data;
-          // Mescla inteligente: preserva registros locais que ainda não estão na nuvem
           const tables = ["Colaboradores", "Ponto", "Insumos", "Produtos", "Clientes", "Pedidos"];
           tables.forEach(t => {
             const localArr = db[t] || [];
             const cloudArr = cloudData[t] || [];
             const map = new Map();
             cloudArr.forEach(item => map.set(item.id, item));
-            localArr.forEach(item => map.set(item.id, item)); // Local mais recente sobrescreve
+            localArr.forEach(item => map.set(item.id, item));
             db[t] = Array.from(map.values());
           });
-
           if (getJson.sheetUrl) setConfig("sheetUrl", getJson.sheetUrl);
         }
 
-        // 2. Envia o banco consolidado de volta para a nuvem
         await syncWithCloud(false);
         applyBranding();
         renderAll();
@@ -1492,7 +1656,7 @@
       } catch (err) {
         console.error(err);
         updateSyncStatus("error");
-        showToast("Erro ao conectar. Verifique se a URL foi implantada como 'Qualquer pessoa'.");
+        showToast("Erro ao conectar na nuvem.");
       }
     }
 
@@ -1500,7 +1664,6 @@
       const url = getConfig("googleScriptUrl");
       if (!url) return;
       updateSyncStatus("syncing");
-
       try {
         const res = await fetch(url, {
           method: "POST",
@@ -1547,29 +1710,131 @@
       a.click();
     }
 
-    function renderRelatorioGeral() {
-      const totalVendas = db.Pedidos.reduce((s, p) => s + Number(p.valorTotal || 0), 0);
-      const totalRecebido = db.Pedidos.reduce((s, p) => s + Number(p.valorPago || 0), 0);
-      const valorEstoque = db.Insumos.reduce((s, i) => s + (Number(i.quantidade) * Number(i.custoUnitario)), 0);
-      const folhaAcumulada = db.Ponto.reduce((s, p) => s + Number(p.valorCalculado || 0), 0);
+    // RELATÓRIO CONSOLIDADO COM FILTROS E CATEGORIAS
+    function aplicarFiltroRelatorio(tipoPeriodo, shouldRender = true) {
+      const hoje = new Date();
+      const fimStr = hoje.toISOString().split("T")[0];
+      const inicio = new Date(hoje);
 
-      document.getElementById("relatorioGeralBox").innerHTML = `
-        <div class="flex justify-between"><span>Total de Pedidos Registrados:</span><strong>${db.Pedidos.length}</strong></div>
-        <div class="flex justify-between"><span>Faturamento Bruto em Pedidos:</span><strong class="text-slate-900">${formatMoney(totalVendas)}</strong></div>
-        <div class="flex justify-between"><span>Total Já Recebido em Caixa:</span><strong class="text-emerald-700">${formatMoney(totalRecebido)}</strong></div>
-        <div class="flex justify-between"><span>Total a Receber de Clientes:</span><strong class="text-rose-600">${formatMoney(totalVendas - totalRecebido)}</strong></div>
-        <hr class="border-slate-200 my-1" />
-        <div class="flex justify-between"><span>Valor Imobilizado em Matéria-Prima:</span><strong>${formatMoney(valorEstoque)}</strong></div>
-        <div class="flex justify-between"><span>Custo Acumulado de Mão de Obra:</span><strong>${formatMoney(folhaAcumulada)}</strong></div>
-      `;
+      if (tipoPeriodo === "DIARIO") {
+        // mesmo dia
+      } else if (tipoPeriodo === "SEMANAL") {
+        inicio.setDate(hoje.getDate() - 6);
+      } else if (tipoPeriodo === "QUINZENAL") {
+        inicio.setDate(hoje.getDate() - 14);
+      } else if (tipoPeriodo === "MENSAL") {
+        inicio.setDate(1);
+      }
+
+      document.getElementById("relDataInicio").value = inicio.toISOString().split("T")[0];
+      document.getElementById("relDataFim").value = fimStr;
+
+      if (shouldRender) renderRelatorioGeral();
     }
 
-    // 8. UTILITÁRIOS DE UI E WHATSAPP
+    function trocarTipoRelatorio(tipo, btnEl) {
+      tipoRelatorioAtual = tipo;
+      document.querySelectorAll(".rel-tab-btn").forEach(b => {
+        b.className = "rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700";
+      });
+      if (btnEl) {
+        btnEl.className = "rel-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white";
+      }
+      renderRelatorioGeral();
+    }
+
+    function renderRelatorioGeral() {
+      const ini = document.getElementById("relDataInicio").value;
+      const fim = document.getElementById("relDataFim").value;
+      const box = document.getElementById("relatorioGeralBox");
+
+      const pedidosPeriodo = db.Pedidos.filter(p => (!ini || p.dataPedido >= ini) && (!fim || p.dataPedido <= fim));
+      const pontosPeriodo = db.Ponto.filter(p => (!ini || p.data >= ini) && (!fim || p.data <= fim));
+
+      if (tipoRelatorioAtual === "GERAL") {
+        const totalVendas = pedidosPeriodo.reduce((s, p) => s + Number(p.valorTotal || 0), 0);
+        const totalRecebido = pedidosPeriodo.reduce((s, p) => s + Number(p.valorPago || 0), 0);
+        const valorEstoque = db.Insumos.reduce((s, i) => s + (Number(i.quantidade) * Number(i.custoUnitario)), 0);
+        const folhaPeriodo = pontosPeriodo.reduce((s, p) => s + Number(p.valorCalculado || 0), 0);
+
+        box.innerHTML = `
+          <p class="font-bold text-slate-900">Visão Geral (${ini.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')})</p>
+          <div class="flex justify-between"><span>Pedidos no Período:</span><strong>${pedidosPeriodo.length}</strong></div>
+          <div class="flex justify-between"><span>Faturamento em Pedidos:</span><strong>${formatMoney(totalVendas)}</strong></div>
+          <div class="flex justify-between"><span>Total Recebido:</span><strong class="text-emerald-700">${formatMoney(totalRecebido)}</strong></div>
+          <div class="flex justify-between"><span>A Receber do Período:</span><strong class="text-rose-600">${formatMoney(Math.max(0, totalVendas - totalRecebido))}</strong></div>
+          <hr class="border-slate-200" />
+          <div class="flex justify-between"><span>Mão de Obra no Período:</span><strong>${formatMoney(folhaPeriodo)}</strong></div>
+          <div class="flex justify-between"><span>Valor em Insumos (Estoque Atual):</span><strong>${formatMoney(valorEstoque)}</strong></div>
+        `;
+      } else if (tipoRelatorioAtual === "COLABORADORES") {
+        if (db.Colaboradores.length === 0) {
+          box.innerHTML = `<p class="text-slate-400">Nenhum colaborador cadastrado.</p>`;
+          return;
+        }
+        box.innerHTML = `<p class="font-bold text-slate-900">Relatório de Colaboradores</p>` + db.Colaboradores.map(c => {
+          const pts = pontosPeriodo.filter(p => p.colaboradorId === c.id);
+          let norm = 0, ext = 0, pg = 0;
+          pts.forEach(p => {
+            calcularHorasRegistro(p, c);
+            norm += Number(p.horasNormais || 0);
+            ext += Number(p.horasExtras || 0);
+            pg += Number(p.valorCalculado || 0);
+          });
+          return `
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200 flex justify-between items-center">
+              <div>
+                <p class="font-bold text-slate-800">${c.nome}</p>
+                <p class="text-[11px] text-slate-500">Dias: ${pts.length} • Normais: ${norm.toFixed(1)}h • Extras: ${ext.toFixed(1)}h • ${c.formaPagamento || 'PIX'}</p>
+              </div>
+              <strong class="text-emerald-700">${formatMoney(pg)}</strong>
+            </div>
+          `;
+        }).join("");
+      } else if (tipoRelatorioAtual === "PEDIDOS") {
+        if (pedidosPeriodo.length === 0) {
+          box.innerHTML = `<p class="text-slate-400">Nenhum pedido no período selecionado.</p>`;
+          return;
+        }
+        box.innerHTML = `<p class="font-bold text-slate-900">Relatório de Pedidos (${pedidosPeriodo.length})</p>` + pedidosPeriodo.map(p => {
+          const cli = db.Clientes.find(c => c.id === p.clienteId) || { nome: "Avulso" };
+          const falta = Math.max(0, Number(p.valorTotal) - Number(p.valorPago));
+          return `
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200 flex justify-between items-center">
+              <div>
+                <p class="font-bold text-slate-800">${cli.nome}</p>
+                <p class="text-[11px] text-slate-500">Pedido: ${p.dataPedido.split('-').reverse().join('/')} • Entrega: ${p.statusEntrega === 'ENTREGUE' ? 'Entregue' : 'Pendente'}</p>
+              </div>
+              <div class="text-right">
+                <strong>${formatMoney(p.valorTotal)}</strong>
+                <span class="block text-[10px] ${falta <= 0.01 ? 'text-emerald-600' : 'text-rose-600'}">${falta <= 0.01 ? 'Quitado' : 'Falta ' + formatMoney(falta)}</span>
+              </div>
+            </div>
+          `;
+        }).join("");
+      } else if (tipoRelatorioAtual === "INSUMOS") {
+        if (db.Insumos.length === 0) {
+          box.innerHTML = `<p class="text-slate-400">Nenhum insumo cadastrado.</p>`;
+          return;
+        }
+        const totalIns = db.Insumos.reduce((s, i) => s + (Number(i.quantidade) * Number(i.custoUnitario)), 0);
+        box.innerHTML = `<p class="font-bold text-slate-900">Relatório de Insumos (Total: ${formatMoney(totalIns)})</p>` + db.Insumos.map(i => `
+          <div class="p-2.5 bg-white rounded-lg border border-slate-200 flex justify-between items-center">
+            <div>
+              <p class="font-bold text-slate-800">${i.nome}</p>
+              <p class="text-[11px] text-slate-500">Saldo: ${i.quantidade} ${i.unidade} • Unit: ${formatMoney(i.custoUnitario)}</p>
+            </div>
+            <strong>${formatMoney(Number(i.quantidade) * Number(i.custoUnitario))}</strong>
+          </div>
+        `).join("");
+      }
+    }
+
+    // WHATSAPP & MODAL
     function abrirWhatsApp(telefone, mensagem) {
       let num = telefone.replace(/\D/g, "");
       if (num.length === 10 || num.length === 11) num = "55" + num;
-      const url = `https://wa.me/${num}?text=${encodeURIComponent(mensagem)}`;
-      window.open(url, "_blank");
+      window.open(`https://wa.me/${num}?text=${encodeURIComponent(mensagem)}`, "_blank");
     }
 
     function openModal(html) {
@@ -1587,6 +1852,7 @@
       renderPedidos();
       renderEstoque();
       renderClientes();
+      renderRelatorioGeral();
     }
   </script>
 </body>
