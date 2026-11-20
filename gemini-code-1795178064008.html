@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#ea580c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>SalgadosPro - Gestão de Minifábrica</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .adm-only { transition: all 0.2s ease; }
+    body:not(.is-adm) .adm-only { display: none !important; }
+    .glass-header { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(10px); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 pb-24 select-none">
+
+  <!-- MANIFEST DINÂMICO PARA PWA -->
+  <script>
+    const manifest = {
+      name: "Gestão Minifábrica de Salgados",
+      short_name: "SalgadosPro",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#f8fafc",
+      theme_color: "#ea580c",
+      icons: [{
+        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ea580c'/><text x='50' y='68' font-size='55' text-anchor='middle' fill='white'>🥟</text></svg>",
+        sizes: "512x512",
+        type: "image/svg+xml"
+      }]
+    };
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
+    document.head.appendChild(link);
+  </script>
+
+  <!-- HEADER SUPERIOR -->
+  <header class="glass-header sticky top-0 z-30 border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm">
+    <div class="flex items-center gap-3">
+      <img id="headerLogo" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='50' fill='%23ffedd5'/><text x='50' y='68' font-size='50' text-anchor='middle'>🥟</text></svg>" alt="Logo" class="w-10 h-10 rounded-full object-cover border border-orange-200 bg-orange-50" />
+      <div>
+        <h1 id="headerTitle" class="font-bold text-slate-900 text-base leading-tight">Minifábrica Salgados</h1>
+        <div class="flex items-center gap-1.5 text-xs">
+          <span id="syncIndicator" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="syncText" class="text-slate-500">Salvo localmente</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Botão Sincronizar -->
+      <button onclick="syncWithCloud()" title="Sincronizar Nuvem" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95 transition">
+        <i data-lucide="cloud-upload" class="w-5 h-5" id="syncIcon"></i>
+      </button>
+      
+      <!-- Botão Modo ADM / Operador -->
+      <button onclick="toggleAdmModal()" id="admBadgeBtn" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white shadow-sm active:scale-95 transition">
+        <i data-lucide="lock" class="w-4 h-4" id="admLockIcon"></i>
+        <span id="admBtnText">Operador</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL (VIEWS) -->
+  <main class="max-w-4xl mx-auto p-4 space-y-6">
+
+    <!-- ==================== 1. ABA PONTO BIOMÉTRICO ==================== -->
+    <section id="view-ponto" class="view-section space-y-5">
+      <div class="bg-gradient-to-br from-orange-600 to-amber-600 rounded-2xl p-5 text-white shadow-lg">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-orange-100 text-xs uppercase tracking-wider font-semibold">Controle de Frequência</p>
+            <h2 id="liveClock" class="text-3xl font-bold mt-1 tracking-tight">00:00:00</h2>
+            <p id="liveDate" class="text-orange-100 text-sm mt-0.5">--/--/----</p>
+          </div>
+          <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
+            <i data-lucide="fingerprint" class="w-8 h-8 text-white"></i>
+          </div>
+        </div>
+
+        <div class="mt-5 bg-white/10 rounded-xl p-3.5 backdrop-blur-sm border border-white/15 space-y-3">
+          <label class="block text-xs font-medium text-orange-50">Selecione o Colaborador para Bater Ponto:</label>
+          <select id="pontoColaboradorSelect" class="w-full rounded-xl bg-white text-slate-900 px-3.5 py-3 text-sm font-medium focus:outline-none">
+            <option value="">-- Selecione seu nome --</option>
+          </select>
+
+          <div class="grid grid-cols-2 gap-2.5 pt-1">
+            <button onclick="registrarPontoBiometrico('ENTRADA')" class="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-4 rounded-xl shadow active:scale-95 transition text-sm">
+              <i data-lucide="log-in" class="w-4 h-4"></i> Entrada
+            </button>
+            <button onclick="registrarPontoBiometrico('SAIDA')" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-xl shadow active:scale-95 transition text-sm">
+              <i data-lucide="log-out" class="w-4 h-4"></i> Saída
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Registros do Dia -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+            <i data-lucide="clock" class="w-4 h-4 text-orange-600"></i> Registros de Hoje
+          </h3>
+          <span id="hojeCountBadge" class="text-xs bg-orange-100 text-orange-700 font-semibold px-2.5 py-0.5 rounded-full">0 registros</span>
+        </div>
+        <div id="listaPontoHoje" class="space-y-2.5"></div>
+      </div>
+
+      <!-- Painel Administrativo de Horas Extras e Folha (APENAS ADM) -->
+      <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border-2 border-amber-400 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Área Restrita ADM</span>
+            <h3 class="font-bold text-slate-900 text-base mt-1">Fechamento de Horas & Pagamentos</h3>
+          </div>
+          <button onclick="abrirModalNovoColaborador()" class="bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1 shadow-sm">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> Equipe
+          </button>
+        </div>
+
+        <!-- Filtro de Período -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-500">Data Inicial</label>
+            <input type="date" id="filtroPontoInicio" onchange="renderAdmFolha()" class="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-500">Data Final</label>
+            <input type="date" id="filtroPontoFim" onchange="renderAdmFolha()" class="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" />
+          </div>
+        </div>
+
+        <div id="admFolhaLista" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 2. ABA PEDIDOS & RECEBIMENTOS ==================== -->
+    <section id="view-pedidos" class="view-section hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Pedidos & Vendas</h2>
+          <p class="text-xs text-slate-500">Entregas, cobranças fracionadas e WhatsApp</p>
+        </div>
+        <button onclick="abrirModalPedido()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition">
+          <i data-lucide="plus" class="w-4 h-4"></i> Novo Pedido
+        </button>
+      </div>
+
+      <!-- Resumo Financeiro Pedidos (ADM) -->
+      <div class="adm-only grid grid-cols-3 gap-2.5">
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-[11px] text-slate-500 font-medium">Total Vendido</p>
+          <p id="kpiTotalVendido" class="text-sm font-bold text-slate-900 mt-0.5">R$ 0,00</p>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-emerald-200 shadow-sm">
+          <p class="text-[11px] text-emerald-600 font-medium">Recebido</p>
+          <p id="kpiTotalRecebido" class="text-sm font-bold text-emerald-700 mt-0.5">R$ 0,00</p>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-rose-200 shadow-sm">
+          <p class="text-[11px] text-rose-600 font-medium">A Receber</p>
+          <p id="kpiTotalAReceber" class="text-sm font-bold text-rose-700 mt-0.5">R$ 0,00</p>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+        <button onclick="filtrarPedidos('TODOS')" class="pedido-filter-btn active px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-900 text-white">Todos</button>
+        <button onclick="filtrarPedidos('PENDENTE_ENTREGA')" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">A Entregar</button>
+        <button onclick="filtrarPedidos('PENDENTE_PAGAMENTO')" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">Pagamento Pendente</button>
+        <button onclick="filtrarPedidos('CONCLUIDO')" class="pedido-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-200">Quitados</button>
+      </div>
+
+      <div id="listaPedidos" class="space-y-3"></div>
+    </section>
+
+    <!-- ==================== 3. ABA MERCADORIAS & INSUMOS ==================== -->
+    <section id="view-estoque" class="view-section hidden space-y-5">
+      <!-- Sub-tabs Estoque -->
+      <div class="grid grid-cols-2 bg-slate-200/80 p-1 rounded-xl">
+        <button onclick="switchEstoqueTab('insumos')" id="tabBtnInsumos" class="py-2 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition">Matéria-Prima (Insumos)</button>
+        <button onclick="switchEstoqueTab('produtos')" id="tabBtnProdutos" class="py-2 text-xs font-bold rounded-lg text-slate-600 transition">Catálogo de Salgados</button>
+      </div>
+
+      <!-- Matéria-Prima -->
+      <div id="subview-insumos" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Estoque de Matéria-Prima</h3>
+            <p class="text-xs text-slate-500">Farinha, frango, óleo, embalagens e custos</p>
+          </div>
+          <button onclick="abrirModalInsumo()" class="bg-orange-600 text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i> Cadastrar
+          </button>
+        </div>
+        <div id="listaInsumos" class="space-y-2.5"></div>
+      </div>
+
+      <!-- Catálogo de Salgados -->
+      <div id="subview-produtos" class="hidden space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Salgados Produzidos</h3>
+            <p class="text-xs text-slate-500">Tabela de preços para pedidos</p>
+          </div>
+          <button onclick="abrirModalProduto()" class="bg-orange-600 text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i> Novo Salgado
+          </button>
+        </div>
+        <div id="listaProdutos" class="space-y-2.5"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 4. ABA CLIENTES / EMPRESAS ==================== -->
+    <section id="view-clientes" class="view-section hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Clientes & Empresas</h2>
+          <p class="text-xs text-slate-500">Contatos integrados ao WhatsApp</p>
+        </div>
+        <button onclick="abrirModalCliente()" class="bg-orange-600 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="user-plus" class="w-4 h-4"></i> Novo Cliente
+        </button>
+      </div>
+
+      <input type="text" id="buscaClienteInput" onkeyup="renderClientes()" placeholder="Buscar por nome, empresa ou telefone..." class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500" />
+
+      <div id="listaClientes" class="space-y-2.5"></div>
+    </section>
+
+    <!-- ==================== 5. ABA RELATÓRIOS & CONFIGURAÇÕES ==================== -->
+    <section id="view-config" class="view-section hidden space-y-5">
+      
+      <!-- Personalização do Estabelecimento (ADM) -->
+      <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-4">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="store" class="w-5 h-5 text-orange-600"></i> Identidade da Minifábrica
+        </h3>
+        
+        <div class="flex items-center gap-4">
+          <img id="configPreviewLogo" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='50' fill='%23ffedd5'/><text x='50' y='68' font-size='50' text-anchor='middle'>🥟</text></svg>" class="w-16 h-16 rounded-full object-cover border-2 border-orange-500" />
+          <div class="flex-1">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Logo / Foto de Perfil</label>
+            <input type="file" accept="image/*" onchange="handleLogoUpload(event)" class="text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Nome do Estabelecimento</label>
+          <input type="text" id="cfgNomeEmpresa" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Ex: Rei do Salgado Ltda" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Senha do Administrador (ADM)</label>
+          <input type="password" id="cfgSenhaAdm" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Nova senha ADM (Padrão: 1234)" />
+        </div>
+
+        <button onclick="salvarConfiguracoes()" class="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm shadow-sm active:scale-95 transition">
+          Salvar Personalização
+        </button>
+      </div>
+
+      <!-- Integração Google Cloud & Banco de Dados -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+        <div class="flex items-center gap-2">
+          <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+            <i data-lucide="database" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Backup & Nuvem Google</h3>
+            <p class="text-xs text-slate-500">Sincronização automática com Google Sheets</p>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">URL do Google Apps Script (Web App)</label>
+          <input type="url" id="cfgGoogleScriptUrl" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono" placeholder="https://script.google.com/macros/s/.../exec" />
+          <p class="text-[11px] text-slate-400 mt-1">Ao conectar pela primeira vez, todos os dados locais serão enviados automaticamente para a planilha criada na sua conta Google.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button onclick="conectarGoogleCloud()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Conectar / Mesclar
+          </button>
+          <button onclick="baixarBackupJson()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5">
+            <i data-lucide="download" class="w-4 h-4"></i> Backup Local (.json)
+          </button>
+        </div>
+        <div id="googleSheetLinkBox" class="hidden pt-2 border-t border-slate-100">
+          <a id="googleSheetAnchor" href="#" target="_blank" class="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline">
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Abrir Planilha Banco de Dados no Google Drive
+          </a>
+        </div>
+      </div>
+
+      <!-- Relatórios Gerenciais (ADM) -->
+      <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="bar-chart-3" class="w-5 h-5 text-orange-600"></i> Relatório Consolidado (ADM)
+        </h3>
+        <div id="relatorioGeralBox" class="text-xs space-y-2 text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- NAVEGAÇÃO INFERIOR (BOTTOM BAR) -->
+  <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center z-30 shadow-lg">
+    <button onclick="switchTab('ponto')" class="nav-btn active flex flex-col items-center p-1.5 text-orange-600" data-tab="ponto">
+      <i data-lucide="fingerprint" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">Ponto</span>
+    </button>
+    <button onclick="switchTab('pedidos')" class="nav-btn flex flex-col items-center p-1.5 text-slate-400" data-tab="pedidos">
+      <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">Pedidos</span>
+    </button>
+    <button onclick="switchTab('estoque')" class="nav-btn flex flex-col items-center p-1.5 text-slate-400" data-tab="estoque">
+      <i data-lucide="package" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">Estoque</span>
+    </button>
+    <button onclick="switchTab('clientes')" class="nav-btn flex flex-col items-center p-1.5 text-slate-400" data-tab="clientes">
+      <i data-lucide="users" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">Clientes</span>
+    </button>
+    <button onclick="switchTab('config')" class="nav-btn flex flex-col items-center p-1.5 text-slate-400" data-tab="config">
+      <i data-lucide="settings" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold mt-0.5">Ajustes</span>
+    </button>
+  </nav>
+
+  <!-- ==================== MODAIS ==================== -->
+  <div id="modalBackdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div id="modalContent" class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto shadow-2xl space-y-4">
+      <!-- Conteúdo injetado dinamicamente -->
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl z-50 hidden transition-opacity"></div>
+
+  <!-- ==================== LÓGICA DO SISTEMA (JAVASCRIPT) ==================== -->
+  <script>
+    // 1. ESTADO GLOBAL & BANCO DE DADOS LOCAL
+    const STORAGE_KEY = "salgados_pro_db_v1";
+    let isAdm = false;
+    let pedidoFilter = "TODOS";
+
+    let db = {
+      Config: [
+        { chave: "nomeEmpresa", valor: "Minifábrica de Salgados" },
+        { chave: "logoBase64", valor: "" },
+        { chave: "senhaAdm", valor: "1234" },
+        { chave: "googleScriptUrl", valor: "" },
+        { chave: "sheetUrl", valor: "" }
+      ],
+      Colaboradores: [],
+      Ponto: [],
+      Insumos: [],
+      Produtos: [],
+      Clientes: [],
+      Pedidos: []
+    };
+
+    // Inicialização
+    document.addEventListener("DOMContentLoaded", () => {
+      loadLocalDB();
+      seedInitialDataIfEmpty();
+      applyBranding();
+      startClock();
+      setDefaultDates();
+      renderAll();
+      lucide.createIcons();
+    });
+
+    function loadLocalDB() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          db = { ...db, ...parsed };
+        } catch (e) { console.error("Erro ao ler DB local", e); }
+      }
+    }
+
+    function saveLocalDB(autoSync = true) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+      updateSyncStatus("saved");
+      if (autoSync && getConfig("googleScriptUrl")) {
+        syncWithCloud(true);
+      }
+    }
+
+    function getConfig(key) {
+      const item = db.Config.find(c => c.chave === key);
+      return item ? item.valor : "";
+    }
+
+    function setConfig(key, valor) {
+      const idx = db.Config.findIndex(c => c.chave === key);
+      if (idx >= 0) db.Config[idx].valor = valor;
+      else db.Config.push({ chave: key, valor });
+    }
+
+    function seedInitialDataIfEmpty() {
+      if (db.Produtos.length === 0) {
+        db.Produtos = [
+          { id: uid(), nome: "Coxinha de Frango (Cento)", precoCento: 65.00, precoUnitario: 0.80, custoProducao: 28.00 },
+          { id: uid(), nome: "Bolinha de Queijo (Cento)", precoCento: 65.00, precoUnitario: 0.80, custoProducao: 30.00 },
+          { id: uid(), nome: "Kibe Recheado (Cento)", precoCento: 70.00, precoUnitario: 0.90, custoProducao: 32.00 },
+          { id: uid(), nome: "Risole de Presunto e Queijo (Cento)", precoCento: 65.00, precoUnitario: 0.80, custoProducao: 29.00 }
+        ];
+        saveLocalDB(false);
+      }
+    }
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.remove("hidden");
+      setTimeout(() => t.classList.add("hidden"), 3000);
+    }
+
+    function formatMoney(val) {
+      return Number(val || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    // 2. NAVEGAÇÃO E MODO ADM
+    function switchTab(tab) {
+      document.querySelectorAll(".view-section").forEach(el => el.classList.add("hidden"));
+      document.getElementById(`view-${tab}`).classList.remove("hidden");
+      
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.classList.remove("text-orange-600", "active");
+        btn.classList.add("text-slate-400");
+      });
+      const activeBtn = document.querySelector(`.nav-btn[data-tab="${tab}"]`);
+      activeBtn.classList.add("text-orange-600", "active");
+      activeBtn.classList.remove("text-slate-400");
+      
+      if (tab === "config") renderRelatorioGeral();
+      lucide.createIcons();
+    }
+
+    function toggleAdmModal() {
+      if (isAdm) {
+        isAdm = false;
+        document.body.classList.remove("is-adm");
+        document.getElementById("admBtnText").textContent = "Operador";
+        document.getElementById("admLockIcon").setAttribute("data-lucide", "lock");
+        document.getElementById("admBadgeBtn").classList.replace("bg-amber-600", "bg-slate-800");
+        lucide.createIcons();
+        showToast("Modo Operador ativado. Dados financeiros ocultos.");
+        return;
+      }
+
+      openModal(`
+        <div class="text-center space-y-3">
+          <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto">
+            <i data-lucide="shield-check" class="w-6 h-6"></i>
+          </div>
+          <h3 class="font-bold text-lg text-slate-900">Acesso Administrativo</h3>
+          <p class="text-xs text-slate-500">Digite a senha de administrador para liberar folha salarial, valores, custos e configurações.</p>
+          <input type="password" id="inputSenhaAdm" class="w-full border border-slate-300 rounded-xl px-4 py-3 text-center text-lg tracking-widest font-bold" placeholder="••••" onkeyup="if(event.key==='Enter') verificarSenhaAdm()" />
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <button onclick="closeModal()" class="py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm">Cancelar</button>
+            <button onclick="verificarSenhaAdm()" class="py-2.5 rounded-xl bg-amber-600 text-white font-semibold text-sm">Entrar como ADM</button>
+          </div>
+        </div>
+      `);
+      setTimeout(() => document.getElementById("inputSenhaAdm")?.focus(), 100);
+    }
+
+    function verificarSenhaAdm() {
+      const digitada = document.getElementById("inputSenhaAdm").value;
+      const correta = getConfig("senhaAdm") || "1234";
+      if (digitada === correta) {
+        isAdm = true;
+        document.body.classList.add("is-adm");
+        document.getElementById("admBtnText").textContent = "ADM Ativo";
+        document.getElementById("admLockIcon").setAttribute("data-lucide", "unlock");
+        document.getElementById("admBadgeBtn").classList.replace("bg-slate-800", "bg-amber-600");
+        closeModal();
+        renderAll();
+        showToast("Modo Administrador desbloqueado!");
+      } else {
+        showToast("Senha incorreta!");
+      }
+    }
+
+    // 3. RELÓGIO E PONTO COM BIOMETRIA NATIVA (WEBAUTHN)
+    function startClock() {
+      const update = () => {
+        const now = new Date();
+        document.getElementById("liveClock").textContent = now.toLocaleTimeString("pt-BR");
+        document.getElementById("liveDate").textContent = now.toLocaleDateString("pt-BR", { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+      };
+      update();
+      setInterval(update, 1000);
+    }
+
+    async function autenticarBiometriaDispositivo(colaboradorNome) {
+      // Verifica suporte à WebAuthn (Sensor biométrico do celular)
+      if (!window.PublicKeyCredential) {
+        return confirm(`Sensor biométrico indisponível neste navegador. Confirmar identidade de ${colaboradorNome}?`);
+      }
+
+      try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        const userId = new Uint8Array(16);
+        window.crypto.getRandomValues(userId);
+
+        // Aciona o leitor biométrico nativo (Platform Authenticator: Digital / FaceID)
+        await navigator.credentials.create({
+          publicKey: {
+            challenge: challenge,
+            rp: { name: getConfig("nomeEmpresa") || "Minifabrica Salgados" },
+            user: {
+              id: userId,
+              name: colaboradorNome,
+              displayName: colaboradorNome
+            },
+            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+            authenticatorSelection: {
+              authenticatorAttachment: "platform",
+              userVerification: "required"
+            },
+            timeout: 60000
+          }
+        });
+        return true;
+      } catch (err) {
+        console.warn("Biometria cancelada ou falhou:", err);
+        showToast("Autenticação biométrica cancelada ou não reconhecida.");
+        return false;
+      }
+    }
+
+    async function registrarPontoBiometrico(tipo) {
+      const colabId = document.getElementById("pontoColaboradorSelect").value;
+      if (!colabId) return showToast("Selecione seu nome antes de bater o ponto.");
+
+      const colab = db.Colaboradores.find(c => c.id === colabId);
+      if (!colab) return;
+
+      // Exige biometria do celular
+      const autenticado = await autenticarBiometriaDispositivo(colab.nome);
+      if (!autenticado) return;
+
+      const now = new Date();
+      const hojeStr = now.toISOString().split("T")[0];
+      const horaAtual = now.toTimeString().slice(0, 5);
+
+      if (tipo === "ENTRADA") {
+        // Verifica se já há entrada em aberto hoje
+        const aberto = db.Ponto.find(p => p.colaboradorId === colabId && p.data === hojeStr && !p.saida);
+        if (aberto) return showToast("Você já possui uma entrada em aberto hoje!");
+
+        db.Ponto.push({
+          id: uid(),
+          colaboradorId: colabId,
+          data: hojeStr,
+          entrada: horaAtual,
+          saida: "",
+          horasNormais: 0,
+          horasExtras: 0,
+          percentualExtra: 50,
+          valorCalculado: 0,
+          pago: false
+        });
+        showToast(`Entrada registrada para ${colab.nome} às ${horaAtual}!`);
+      } else {
+        // Busca entrada em aberto
+        const aberto = db.Ponto.find(p => p.colaboradorId === colabId && p.data === hojeStr && !p.saida);
+        if (!aberto) return showToast("Nenhuma entrada encontrada hoje para registrar saída.");
+
+        aberto.saida = horaAtual;
+        calcularHorasRegistro(aberto, colab);
+        showToast(`Saída registrada para ${colab.nome} às ${horaAtual}!`);
+      }
+
+      saveLocalDB();
+      renderPonto();
+    }
+
+    function calcularHorasRegistro(registro, colab) {
+      if (!registro.entrada || !registro.saida) return;
+      const [h1, m1] = registro.entrada.split(":").map(Number);
+      const [h2, m2] = registro.saida.split(":").map(Number);
+      let totalHoras = (h2 + m2 / 60) - (h1 + m1 / 60);
+      if (totalHoras < 0) totalHoras += 24; // virada de turno
+
+      // Padrão de 8h diárias; o excedente vai para extra (ajustável pelo ADM)
+      const normais = Math.min(totalHoras, 8);
+      const extras = Math.max(0, totalHoras - 8);
+      const perc = Number(registro.percentualExtra || 50);
+      const valorHora = Number(colab?.valorHora || 0);
+
+      registro.horasNormais = Number(normais.toFixed(2));
+      registro.horasExtras = Number(extras.toFixed(2));
+      registro.valorCalculado = Number(((normais * valorHora) + (extras * valorHora * (1 + perc / 100))).toFixed(2));
+    }
+
+    function renderPonto() {
+      // Atualiza Select
+      const select = document.getElementById("pontoColaboradorSelect");
+      const currentVal = select.value;
+      select.innerHTML = `<option value="">-- Selecione seu nome --</option>` + 
+        db.Colaboradores.filter(c => c.ativo !== false).map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+      select.value = currentVal;
+
+      // Lista de Hoje
+      const hojeStr = new Date().toISOString().split("T")[0];
+      const registrosHoje = db.Ponto.filter(p => p.data === hojeStr);
+      document.getElementById("hojeCountBadge").textContent = `${registrosHoje.length} registros`;
+
+      const container = document.getElementById("listaPontoHoje");
+      if (registrosHoje.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Nenhuma batida de ponto registrada hoje.</p>`;
+      } else {
+        container.innerHTML = registrosHoje.map(r => {
+          const colab = db.Colaboradores.find(c => c.id === r.colaboradorId) || { nome: "Desconhecido" };
+          return `
+            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <div>
+                <p class="font-semibold text-sm text-slate-800">${colab.nome}</p>
+                <p class="text-xs text-slate-500">Entrada: <strong class="text-emerald-600">${r.entrada}</strong> • Saída: <strong class="text-slate-700">${r.saida || "Em turno"}</strong></p>
+              </div>
+              <span class="text-xs font-bold px-2.5 py-1 rounded-lg ${r.saida ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}">
+                ${r.saida ? (r.horasNormais + r.horasExtras).toFixed(1) + 'h' : 'Ativo'}
+              </span>
+            </div>
+          `;
+        }).join("");
+      }
+
+      renderAdmFolha();
+    }
+
+    function setDefaultDates() {
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+      document.getElementById("filtroPontoInicio").value = firstDay;
+      document.getElementById("filtroPontoFim").value = lastDay;
+    }
+
+    function renderAdmFolha() {
+      const ini = document.getElementById("filtroPontoInicio").value;
+      const fim = document.getElementById("filtroPontoFim").value;
+      const container = document.getElementById("admFolhaLista");
+
+      if (db.Colaboradores.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-3">Cadastre colaboradores no botão "Equipe" acima.</p>`;
+        return;
+      }
+
+      container.innerHTML = db.Colaboradores.map(colab => {
+        const pontos = db.Ponto.filter(p => p.colaboradorId === colab.id && (!ini || p.data >= ini) && (!fim || p.data <= fim));
+        let totalNormais = 0, totalExtras = 0, totalPagar = 0;
+
+        pontos.forEach(p => {
+          calcularHorasRegistro(p, colab);
+          totalNormais += Number(p.horasNormais || 0);
+          totalExtras += Number(p.horasExtras || 0);
+          totalPagar += Number(p.valorCalculado || 0);
+        });
+
+        return `
+          <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="font-bold text-slate-900 text-sm">${colab.nome}</h4>
+                <p class="text-[11px] text-slate-500">Valor/Hora: <strong>${formatMoney(colab.valorHora)}</strong> • Pgto: <strong>${colab.formaPagamento || 'PIX'}</strong></p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-slate-500 block">Total Período</span>
+                <span class="font-bold text-emerald-700 text-base">${formatMoney(totalPagar)}</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-center bg-white p-2 rounded-lg border border-slate-100 text-xs">
+              <div><span class="text-slate-400 block text-[10px]">Dias</span><strong>${pontos.length}</strong></div>
+              <div><span class="text-slate-400 block text-[10px]">Normais</span><strong>${totalNormais.toFixed(1)}h</strong></div>
+              <div><span class="text-amber-600 block text-[10px]">Extras</span><strong class="text-amber-600">${totalExtras.toFixed(1)}h</strong></div>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <button onclick="abrirDetalhesPontoColab('${colab.id}')" class="flex-1 bg-white border border-slate-300 text-slate-700 py-1.5 rounded-lg text-xs font-semibold">
+                Ajustar Extras / Dias
+              </button>
+              <button onclick="enviarInformePagamentoWhatsApp('${colab.id}', ${totalNormais}, ${totalExtras}, ${totalPagar})" class="flex-1 bg-emerald-600 text-white py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
+                <i data-lucide="send" class="w-3.5 h-3.5"></i> Informe WhatsApp
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+      lucide.createIcons();
+    }
+
+    function abrirModalNovoColaborador(editId = null) {
+      const colab = editId ? db.Colaboradores.find(c => c.id === editId) : {};
+      openModal(`
+        <h3 class="font-bold text-lg text-slate-900">${editId ? 'Editar' : 'Novo'} Colaborador</h3>
+        <div class="space-y-3 text-sm">
+          <div>
+            <label class="text-xs font-semibold text-slate-600">Nome Completo</label>
+            <input type="text" id="colabNome" value="${colab.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="Ex: Maria Silva" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">WhatsApp (com DDD)</label>
+              <input type="tel" id="colabTel" value="${colab.telefone || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="22999999999" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Valor da Hora (R$)</label>
+              <input type="number" step="0.01" id="colabValorHora" value="${colab.valorHora || '12.50'}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Forma de Pagamento</label>
+              <select id="colabFormaPgto" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1">
+                <option value="PIX" ${colab.formaPagamento === 'PIX' ? 'selected' : ''}>PIX</option>
+                <option value="Dinheiro" ${colab.formaPagamento === 'Dinheiro' ? 'selected' : ''}>Dinheiro</option>
+                <option value="Transferência" ${colab.formaPagamento === 'Transferência' ? 'selected' : ''}>Transferência</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Chave PIX / Conta</label>
+              <input type="text" id="colabPix" value="${colab.chavePix || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="CPF, Tel ou Email" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-3">
+            <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+            <button onclick="salvarColaborador('${editId || ''}')" class="py-2.5 bg-orange-600 text-white rounded-xl font-semibold">Salvar</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function salvarColaborador(editId) {
+      const nome = document.getElementById("colabNome").value.trim();
+      if (!nome) return showToast("Informe o nome do colaborador.");
+
+      const obj = {
+        id: editId || uid(),
+        nome,
+        telefone: document.getElementById("colabTel").value.trim(),
+        valorHora: parseFloat(document.getElementById("colabValorHora").value) || 0,
+        formaPagamento: document.getElementById("colabFormaPgto").value,
+        chavePix: document.getElementById("colabPix").value.trim(),
+        ativo: true
+      };
+
+      if (editId) {
+        const idx = db.Colaboradores.findIndex(c => c.id === editId);
+        db.Colaboradores[idx] = obj;
+      } else {
+        db.Colaboradores.push(obj);
+      }
+
+      saveLocalDB();
+      closeModal();
+      renderPonto();
+      showToast("Colaborador salvo!");
+    }
+
+    function abrirDetalhesPontoColab(colabId) {
+      const colab = db.Colaboradores.find(c => c.id === colabId);
+      const ini = document.getElementById("filtroPontoInicio").value;
+      const fim = document.getElementById("filtroPontoFim").value;
+      const pontos = db.Ponto.filter(p => p.colaboradorId === colabId && (!ini || p.data >= ini) && (!fim || p.data <= fim));
+
+      openModal(`
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-base text-slate-900">Frequência: ${colab.nome}</h3>
+          <button onclick="abrirModalNovoColaborador('${colab.id}')" class="text-xs text-orange-600 font-semibold underline">Editar Cadastro</button>
+        </div>
+        <div class="space-y-2.5 max-h-80 overflow-y-auto">
+          ${pontos.length === 0 ? '<p class="text-xs text-slate-400">Nenhum registro no período.</p>' : pontos.map(p => `
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
+              <div class="flex justify-between font-bold">
+                <span>Data: ${p.data.split('-').reverse().join('/')}</span>
+                <span class="text-emerald-700">${formatMoney(p.valorCalculado)}</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="text-[10px] text-slate-500">Entrada</label>
+                  <input type="time" value="${p.entrada}" onchange="atualizarRegistroPonto('${p.id}', 'entrada', this.value)" class="w-full border rounded px-1.5 py-1 bg-white" />
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">Saída</label>
+                  <input type="time" value="${p.saida}" onchange="atualizarRegistroPonto('${p.id}', 'saida', this.value)" class="w-full border rounded px-1.5 py-1 bg-white" />
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">% Hora Extra</label>
+                  <select onchange="atualizarRegistroPonto('${p.id}', 'percentualExtra', this.value)" class="w-full border rounded px-1 py-1 bg-white">
+                    <option value="50" ${p.percentualExtra == 50 ? 'selected' : ''}>50%</option>
+                    <option value="75" ${p.percentualExtra == 75 ? 'selected' : ''}>75%</option>
+                    <option value="100" ${p.percentualExtra == 100 ? 'selected' : ''}>100%</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+        <button onclick="closeModal(); renderPonto();" class="w-full py-2.5 bg-slate-900 text-white rounded-xl text-sm font-semibold">Concluir</button>
+      `);
+    }
+
+    function atualizarRegistroPonto(pontoId, campo, valor) {
+      const p = db.Ponto.find(x => x.id === pontoId);
+      if (!p) return;
+      p[campo] = valor;
+      const colab = db.Colaboradores.find(c => c.id === p.colaboradorId);
+      calcularHorasRegistro(p, colab);
+      saveLocalDB();
+    }
+
+    function enviarInformePagamentoWhatsApp(colabId, normais, extras, total) {
+      const colab = db.Colaboradores.find(c => c.id === colabId);
+      if (!colab || !colab.telefone) return showToast("Colaborador sem telefone cadastrado.");
+      const empresa = getConfig("nomeEmpresa");
+      const msg = `*${empresa} - Informe de Pagamento*\n\nOlá, *${colab.nome}*!\nSegue o resumo das suas horas no período:\n• Horas Normais: ${normais.toFixed(1)}h\n• Horas Extras: ${extras.toFixed(1)}h\n• Valor/Hora: ${formatMoney(colab.valorHora)}\n• Forma de Pgto: ${colab.formaPagamento} ${colab.chavePix ? '('+colab.chavePix+')' : ''}\n\n*Total a Receber: ${formatMoney(total)}*`;
+      abrirWhatsApp(colab.telefone, msg);
+    }
+
+    // 4. PEDIDOS, ENTREGA E RECEBIMENTO FRACIONADO
+    function filtrarPedidos(status) {
+      pedidoFilter = status;
+      document.querySelectorAll(".pedido-filter-btn").forEach(b => {
+        b.classList.remove("bg-slate-900", "text-white");
+        b.classList.add("bg-white", "text-slate-600");
+      });
+      event.target.classList.add("bg-slate-900", "text-white");
+      event.target.classList.remove("bg-white", "text-slate-600");
+      renderPedidos();
+    }
+
+    function renderPedidos() {
+      let totalVendido = 0, totalRecebido = 0;
+      db.Pedidos.forEach(p => {
+        totalVendido += Number(p.valorTotal || 0);
+        totalRecebido += Number(p.valorPago || 0);
+      });
+      document.getElementById("kpiTotalVendido").textContent = formatMoney(totalVendido);
+      document.getElementById("kpiTotalRecebido").textContent = formatMoney(totalRecebido);
+      document.getElementById("kpiTotalAReceber").textContent = formatMoney(totalVendido - totalRecebido);
+
+      let lista = [...db.Pedidos].reverse();
+      if (pedidoFilter === "PENDENTE_ENTREGA") lista = lista.filter(p => p.statusEntrega !== "ENTREGUE");
+      if (pedidoFilter === "PENDENTE_PAGAMENTO") lista = lista.filter(p => (p.valorTotal - p.valorPago) > 0.01);
+      if (pedidoFilter === "CONCLUIDO") lista = lista.filter(p => (p.valorTotal - p.valorPago) <= 0.01 && p.statusEntrega === "ENTREGUE");
+
+      const container = document.getElementById("listaPedidos");
+      if (lista.length === 0) {
+        container.innerHTML = `<div class="bg-white rounded-2xl p-8 text-center border border-slate-200"><p class="text-sm text-slate-400">Nenhum pedido encontrado neste filtro.</p></div>`;
+        return;
+      }
+
+      container.innerHTML = lista.map(p => {
+        const cliente = db.Clientes.find(c => c.id === p.clienteId) || { nome: "Cliente Avulso", telefone: "" };
+        const restante = Math.max(0, Number(p.valorTotal) - Number(p.valorPago));
+        const quitado = restante <= 0.01;
+        const itensTexto = (p.itensJson || []).map(i => `${i.qtd}x ${i.nome}`).join(", ");
+
+        return `
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h4 class="font-bold text-slate-900 text-sm">${cliente.nome}</h4>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${p.statusEntrega === 'ENTREGUE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}">
+                    ${p.statusEntrega === 'ENTREGUE' ? 'Entregue' : 'A Entregar'}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">${itensTexto}</p>
+              </div>
+              <div class="text-right">
+                <span class="font-bold text-slate-900 text-sm block">${formatMoney(p.valorTotal)}</span>
+                <span class="text-[11px] font-semibold ${quitado ? 'text-emerald-600' : 'text-rose-600'}">
+                  ${quitado ? 'Quitado' : 'Falta: ' + formatMoney(restante)}
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-3 py-2 rounded-xl">
+              <span>📦 Entrega: <strong>${p.dataEntrega ? p.dataEntrega.split('-').reverse().join('/') : '--'}</strong></span>
+              <span>💰 Receber em: <strong>${p.dataVencimento ? p.dataVencimento.split('-').reverse().join('/') : '--'}</strong></span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <button onclick="alternarStatusEntrega('${p.id}')" class="py-2 px-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                ${p.statusEntrega === 'ENTREGUE' ? 'Reabrir Entrega' : 'Marcar Entregue'}
+              </button>
+              <button onclick="abrirModalPagamentoFracionado('${p.id}')" class="py-2 px-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
+                Receber (${(p.pagamentosJson || []).length})
+              </button>
+              <button onclick="enviarPedidoWhatsApp('${p.id}')" class="py-2 px-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold flex items-center justify-center gap-1">
+                <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+      lucide.createIcons();
+    }
+
+    let carrinhoPedido = [];
+
+    function abrirModalPedido() {
+      carrinhoPedido = [];
+      const hoje = new Date().toISOString().split("T")[0];
+      openModal(`
+        <h3 class="font-bold text-lg text-slate-900">Novo Pedido de Salgados</h3>
+        <div class="space-y-3 text-sm">
+          <div>
+            <label class="text-xs font-semibold text-slate-600">Cliente / Empresa</label>
+            <select id="pedCliente" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1">
+              <option value="">-- Selecione o Cliente --</option>
+              ${db.Clientes.map(c => `<option value="${c.id}">${c.nome} ${c.telefone ? '('+c.telefone+')' : ''}</option>`).join("")}
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Dia da Entrega</label>
+              <input type="date" id="pedDataEntrega" value="${hoje}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Dia de Receber Pgto</label>
+              <input type="date" id="pedDataVenc" value="${hoje}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            </div>
+          </div>
+
+          <!-- Adicionar Produtos -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <label class="text-xs font-bold text-slate-700 block">Adicionar Salgados ao Pedido</label>
+            <div class="flex gap-2">
+              <select id="pedProdSelect" class="flex-1 border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white">
+                ${db.Produtos.map(pr => `<option value="${pr.id}">${pr.nome} - ${formatMoney(pr.precoCento)}</option>`).join("")}
+              </select>
+              <input type="number" id="pedProdQtd" value="1" min="0.5" step="0.5" class="w-16 border border-slate-200 rounded-lg px-2 py-2 text-xs text-center bg-white" />
+              <button onclick="addItemCarrinho()" class="bg-slate-900 text-white px-3 rounded-lg text-xs font-bold">+</button>
+            </div>
+            <div id="carrinhoLista" class="space-y-1 pt-1 text-xs"></div>
+          </div>
+
+          <div class="flex justify-between items-center bg-orange-50 p-3 rounded-xl border border-orange-200">
+            <span class="font-semibold text-orange-900">Valor Total do Pedido:</span>
+            <span id="pedTotalDisplay" class="font-bold text-lg text-orange-700">R$ 0,00</span>
+          </div>
+
+          <div>
+            <label class="text-xs font-semibold text-slate-600">Sinal / Pagamento Inicial (Opcional - R$)</label>
+            <input type="number" step="0.01" id="pedSinal" placeholder="0,00" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+            <button onclick="salvarPedido()" class="py-2.5 bg-orange-600 text-white rounded-xl font-semibold">Salvar Pedido</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function addItemCarrinho() {
+      const prodId = document.getElementById("pedProdSelect").value;
+      const qtd = parseFloat(document.getElementById("pedProdQtd").value) || 1;
+      const prod = db.Produtos.find(p => p.id === prodId);
+      if (!prod) return;
+
+      carrinhoPedido.push({
+        produtoId: prod.id,
+        nome: prod.nome,
+        qtd,
+        valorUnit: prod.precoCento,
+        subtotal: qtd * prod.precoCento
+      });
+      renderCarrinho();
+    }
+
+    function renderCarrinho() {
+      const box = document.getElementById("carrinhoLista");
+      let total = 0;
+      box.innerHTML = carrinhoPedido.map((item, idx) => {
+        total += item.subtotal;
+        return `<div class="flex justify-between items-center bg-white px-2.5 py-1.5 rounded border border-slate-100">
+          <span><strong>${item.qtd}x</strong> ${item.nome}</span>
+          <div class="flex items-center gap-2">
+            <span class="font-semibold">${formatMoney(item.subtotal)}</span>
+            <button onclick="carrinhoPedido.splice(${idx},1); renderCarrinho()" class="text-rose-500 font-bold">×</button>
+          </div>
+        </div>`;
+      }).join("");
+      document.getElementById("pedTotalDisplay").textContent = formatMoney(total);
+    }
+
+    function salvarPedido() {
+      if (carrinhoPedido.length === 0) return showToast("Adicione pelo menos 1 item ao pedido.");
+      const valorTotal = carrinhoPedido.reduce((acc, i) => acc + i.subtotal, 0);
+      const sinal = parseFloat(document.getElementById("pedSinal").value) || 0;
+      const hoje = new Date().toISOString().split("T")[0];
+
+      const pagamentos = [];
+      if (sinal > 0) {
+        pagamentos.push({ data: hoje, valor: sinal, obs: "Sinal / Entrada" });
+      }
+
+      db.Pedidos.push({
+        id: uid(),
+        clienteId: document.getElementById("pedCliente").value,
+        dataPedido: hoje,
+        dataEntrega: document.getElementById("pedDataEntrega").value,
+        dataVencimento: document.getElementById("pedDataVenc").value,
+        itensJson: carrinhoPedido,
+        valorTotal,
+        valorPago: sinal,
+        pagamentosJson: pagamentos,
+        statusEntrega: "PENDENTE",
+        observacoes: ""
+      });
+
+      saveLocalDB();
+      closeModal();
+      renderPedidos();
+      showToast("Pedido registrado com sucesso!");
+    }
+
+    function alternarStatusEntrega(pedidoId) {
+      const p = db.Pedidos.find(x => x.id === pedidoId);
+      if (!p) return;
+      p.statusEntrega = p.statusEntrega === "ENTREGUE" ? "PENDENTE" : "ENTREGUE";
+      saveLocalDB();
+      renderPedidos();
+    }
+
+    function abrirModalPagamentoFracionado(pedidoId) {
+      const p = db.Pedidos.find(x => x.id === pedidoId);
+      if (!p) return;
+      const restante = Math.max(0, p.valorTotal - p.valorPago);
+      const hoje = new Date().toISOString().split("T")[0];
+
+      openModal(`
+        <h3 class="font-bold text-lg text-slate-900">Controle de Recebimento</h3>
+        <div class="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl text-center text-xs border border-slate-200">
+          <div><span class="text-slate-500 block">Total</span><strong>${formatMoney(p.valorTotal)}</strong></div>
+          <div><span class="text-emerald-600 block">Já Pago</span><strong class="text-emerald-700">${formatMoney(p.valorPago)}</strong></div>
+          <div><span class="text-rose-600 block">Falta Receber</span><strong class="text-rose-700">${formatMoney(restante)}</strong></div>
+        </div>
+
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-slate-700">Histórico de Parcelas Recebidas:</p>
+          ${(p.pagamentosJson || []).length === 0 ? '<p class="text-xs text-slate-400">Nenhum pagamento registrado ainda.</p>' : 
+            p.pagamentosJson.map(pg => `
+              <div class="flex justify-between text-xs bg-emerald-50/70 px-3 py-2 rounded-lg border border-emerald-100">
+                <span>📅 ${pg.data.split('-').reverse().join('/')} (${pg.obs || 'Parcela'})</span>
+                <strong class="text-emerald-700">${formatMoney(pg.valor)}</strong>
+              </div>
+            `).join("")}
+        </div>
+
+        ${restante > 0.01 ? `
+          <div class="border-t border-slate-200 pt-3 space-y-2.5">
+            <p class="text-xs font-bold text-slate-800">Registrar Novo Recebimento Fracionado:</p>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[11px] text-slate-500">Valor Recebido (R$)</label>
+                <input type="number" step="0.01" id="novoPgtoValor" value="${restante.toFixed(2)}" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold" />
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-500">Data do Recebimento</label>
+                <input type="date" id="novoPgtoData" value="${hoje}" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <input type="text" id="novoPgtoObs" placeholder="Forma (PIX, Dinheiro, etc.)" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs" />
+            <button onclick="registrarParcelaPedido('${p.id}')" class="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold">Confirmar Recebimento</button>
+          </div>
+        ` : '<div class="p-3 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl text-center">Pedido 100% Quitado!</div>'}
+
+        <button onclick="closeModal()" class="w-full py-2 bg-slate-100 rounded-xl text-xs font-semibold text-slate-700">Fechar</button>
+      `);
+    }
+
+    function registrarParcelaPedido(pedidoId) {
+      const p = db.Pedidos.find(x => x.id === pedidoId);
+      const val = parseFloat(document.getElementById("novoPgtoValor").value) || 0;
+      if (val <= 0) return showToast("Informe um valor válido.");
+
+      p.pagamentosJson = p.pagamentosJson || [];
+      p.pagamentosJson.push({
+        data: document.getElementById("novoPgtoData").value,
+        valor: val,
+        obs: document.getElementById("novoPgtoObs").value || "Pagamento parcial"
+      });
+      p.valorPago = p.pagamentosJson.reduce((acc, item) => acc + Number(item.valor), 0);
+
+      saveLocalDB();
+      closeModal();
+      renderPedidos();
+      showToast("Pagamento registrado!");
+    }
+
+    function enviarPedidoWhatsApp(pedidoId) {
+      const p = db.Pedidos.find(x => x.id === pedidoId);
+      const cliente = db.Clientes.find(c => c.id === p.clienteId);
+      if (!cliente || !cliente.telefone) return showToast("Cliente sem número de WhatsApp cadastrado!");
+
+      const empresa = getConfig("nomeEmpresa");
+      const itens = (p.itensJson || []).map(i => `• ${i.qtd}x ${i.nome}: ${formatMoney(i.subtotal)}`).join("\n");
+      const restante = Math.max(0, p.valorTotal - p.valorPago);
+      const dataEnt = p.dataEntrega ? p.dataEntrega.split('-').reverse().join('/') : 'A combinar';
+      const dataVenc = p.dataVencimento ? p.dataVencimento.split('-').reverse().join('/') : 'Na entrega';
+
+      let msg = `*${empresa} - Resumo do Pedido*\n\nOlá, *${cliente.nome}*!\nSegue o detalhamento do seu pedido:\n\n${itens}\n\n*Valor Total:* ${formatMoney(p.valorTotal)}\n*Valor Pago:* ${formatMoney(p.valorPago)}\n*Saldo Restante:* ${formatMoney(restante)}\n\n📦 *Entrega:* ${dataEnt}\n💰 *Vencimento:* ${dataVenc}`;
+      
+      abrirWhatsApp(cliente.telefone, msg);
+    }
+
+    // 5. MATÉRIA-PRIMA (INSUMOS) E PRODUTOS
+    function switchEstoqueTab(sub) {
+      document.getElementById("subview-insumos").classList.toggle("hidden", sub !== "insumos");
+      document.getElementById("subview-produtos").classList.toggle("hidden", sub !== "produtos");
+      
+      document.getElementById("tabBtnInsumos").className = sub === "insumos" 
+        ? "py-2 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition"
+        : "py-2 text-xs font-bold rounded-lg text-slate-600 transition";
+      document.getElementById("tabBtnProdutos").className = sub === "produtos" 
+        ? "py-2 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition"
+        : "py-2 text-xs font-bold rounded-lg text-slate-600 transition";
+    }
+
+    function renderEstoque() {
+      const listaIns = document.getElementById("listaInsumos");
+      if (db.Insumos.length === 0) {
+        listaIns.innerHTML = `<p class="text-xs text-slate-400 text-center py-6 bg-white rounded-2xl border border-slate-200">Nenhuma matéria-prima cadastrada.</p>`;
+      } else {
+        listaIns.innerHTML = db.Insumos.map(ins => {
+          const baixo = Number(ins.quantidade) <= Number(ins.estoqueMinimo || 0);
+          return `
+            <div class="bg-white p-3.5 rounded-2xl border ${baixo ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200'} flex justify-between items-center shadow-sm">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h4 class="font-bold text-sm text-slate-900">${ins.nome}</h4>
+                  ${baixo ? '<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Estoque Baixo</span>' : ''}
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">Qtd: <strong>${ins.quantidade} ${ins.unidade}</strong> <span class="adm-only">• Custo Unit: <strong>${formatMoney(ins.custoUnitario)}</strong></span></p>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="ajustarQtdInsumo('${ins.id}', -1)" class="w-8 h-8 rounded-lg bg-slate-100 font-bold text-slate-700">-</button>
+                <button onclick="ajustarQtdInsumo('${ins.id}', 1)" class="w-8 h-8 rounded-lg bg-slate-100 font-bold text-slate-700">+</button>
+                <button onclick="abrirModalInsumo('${ins.id}')" class="p-2 text-slate-400 hover:text-slate-700"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      const listaProd = document.getElementById("listaProdutos");
+      listaProd.innerHTML = db.Produtos.map(pr => `
+        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex justify-between items-center shadow-sm">
+          <div>
+            <h4 class="font-bold text-sm text-slate-900">${pr.nome}</h4>
+            <p class="text-xs text-slate-500 mt-0.5">Venda: <strong class="text-emerald-700">${formatMoney(pr.precoCento)}</strong> <span class="adm-only">• Custo Prod: <strong>${formatMoney(pr.custoProducao)}</strong></span></p>
+          </div>
+          <button onclick="abrirModalProduto('${pr.id}')" class="p-2 text-slate-400 hover:text-slate-700"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+        </div>
+      `).join("");
+      lucide.createIcons();
+    }
+
+    function ajustarQtdInsumo(id, delta) {
+      const ins = db.Insumos.find(i => i.id === id);
+      if (!ins) return;
+      ins.quantidade = Math.max(0, Number(ins.quantidade) + delta);
+      saveLocalDB();
+      renderEstoque();
+    }
+
+    function abrirModalInsumo(editId = null) {
+      const ins = editId ? db.Insumos.find(i => i.id === editId) : {};
+      openModal(`
+        <h3 class="font-bold text-lg text-slate-900">${editId ? 'Editar' : 'Cadastrar'} Matéria-Prima</h3>
+        <div class="space-y-3 text-sm">
+          <div>
+            <label class="text-xs font-semibold text-slate-600">Nome do Insumo</label>
+            <input type="text" id="insNome" value="${ins.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="Ex: Farinha de Trigo 25kg" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Quantidade Atual</label>
+              <input type="number" step="0.1" id="insQtd" value="${ins.quantidade || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Unidade</label>
+              <select id="insUnid" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1">
+                <option value="kg" ${ins.unidade === 'kg' ? 'selected' : ''}>Kg</option>
+                <option value="un" ${ins.unidade === 'un' ? 'selected' : ''}>Unidade / Pct</option>
+                <option value="L" ${ins.unidade === 'L' ? 'selected' : ''}>Litros</option>
+                <option value="cx" ${ins.unidade === 'cx' ? 'selected' : ''}>Caixa</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Valor Pago / Unitário (R$)</label>
+              <input type="number" step="0.01" id="insCusto" value="${ins.custoUnitario || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Alerta Estoque Mínimo</label>
+              <input type="number" id="insMin" value="${ins.estoqueMinimo || '5'}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+            <button onclick="salvarInsumo('${editId || ''}')" class="py-2.5 bg-orange-600 text-white rounded-xl font-semibold">Salvar</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function salvarInsumo(editId) {
+      const nome = document.getElementById("insNome").value.trim();
+      if (!nome) return showToast("Informe o nome do insumo.");
+      const obj = {
+        id: editId || uid(),
+        nome,
+        quantidade: parseFloat(document.getElementById("insQtd").value) || 0,
+        unidade: document.getElementById("insUnid").value,
+        custoUnitario: parseFloat(document.getElementById("insCusto").value) || 0,
+        estoqueMinimo: parseFloat(document.getElementById("insMin").value) || 0
+      };
+      if (editId) {
+        const idx = db.Insumos.findIndex(i => i.id === editId);
+        db.Insumos[idx] = obj;
+      } else {
+        db.Insumos.push(obj);
+      }
+      saveLocalDB();
+      closeModal();
+      renderEstoque();
+      showToast("Matéria-prima salva!");
+    }
+
+    function abrirModalProduto(editId = null) {
+      const pr = editId ? db.Produtos.find(p => p.id === editId) : {};
+      openModal(`
+        <h3 class="font-bold text-lg text-slate-900">${editId ? 'Editar' : 'Novo'} Produto / Salgado</h3>
+        <div class="space-y-3 text-sm">
+          <div>
+            <label class="text-xs font-semibold text-slate-600">Nome do Produto</label>
+            <input type="text" id="prNome" value="${pr.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="Ex: Coxinha de Carne Seca (Cento)" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Preço de Venda (R$)</label>
+              <input type="number" step="0.01" id="prPreco" value="${pr.precoCento || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Custo Produção (R$)</label>
+              <input type="number" step="0.01" id="prCusto" value="${pr.custoProducao || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+            <button onclick="salvarProduto('${editId || ''}')" class="py-2.5 bg-orange-600 text-white rounded-xl font-semibold">Salvar</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function salvarProduto(editId) {
+      const nome = document.getElementById("prNome").value.trim();
+      if (!nome) return showToast("Informe o nome do produto.");
+      const obj = {
+        id: editId || uid(),
+        nome,
+        precoCento: parseFloat(document.getElementById("prPreco").value) || 0,
+        precoUnitario: 0,
+        custoProducao: parseFloat(document.getElementById("prCusto").value) || 0
+      };
+      if (editId) {
+        const idx = db.Produtos.findIndex(p => p.id === editId);
+        db.Produtos[idx] = obj;
+      } else {
+        db.Produtos.push(obj);
+      }
+      saveLocalDB();
+      closeModal();
+      renderEstoque();
+      showToast("Produto salvo!");
+    }
+
+    // 6. CLIENTES & EMPRESAS
+    function renderClientes() {
+      const termo = (document.getElementById("buscaClienteInput").value || "").toLowerCase();
+      const filtrados = db.Clientes.filter(c => c.nome.toLowerCase().includes(termo) || (c.telefone || "").includes(termo));
+      const container = document.getElementById("listaClientes");
+
+      if (filtrados.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6 bg-white rounded-2xl border border-slate-200">Nenhum cliente cadastrado.</p>`;
+        return;
+      }
+
+      container.innerHTML = filtrados.map(c => `
+        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex justify-between items-center shadow-sm">
+          <div>
+            <div class="flex items-center gap-2">
+              <h4 class="font-bold text-sm text-slate-900">${c.nome}</h4>
+              <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-semibold">${c.tipo || 'Pessoa'}</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">${c.telefone || 'Sem telefone'} ${c.endereco ? '• ' + c.endereco : ''}</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            ${c.telefone ? `<button onclick="abrirWhatsApp('${c.telefone}', 'Olá ${c.nome}, tudo bem?')" class="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="message-circle" class="w-4 h-4"></i></button>` : ''}
+            <button onclick="abrirModalCliente('${c.id}')" class="p-2 text-slate-400 hover:text-slate-700"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+      `).join("");
+      lucide.createIcons();
+    }
+
+    function abrirModalCliente(editId = null) {
+      const cli = editId ? db.Clientes.find(c => c.id === editId) : {};
+      openModal(`
+        <h3 class="font-bold text-lg text-slate-900">${editId ? 'Editar' : 'Cadastrar'} Pessoa / Empresa</h3>
+        <div class="space-y-3 text-sm">
+          <div>
+            <label class="text-xs font-semibold text-slate-600">Nome ou Razão Social</label>
+            <input type="text" id="cliNome" value="${cli.nome || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="Ex: Lanchonete Central" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Tipo</label>
+              <select id="cliTipo" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1">
+                <option value="Empresa" ${cli.tipo === 'Empresa' ? 'selected' : ''}>Empresa / Comércio</option>
+                <option value="Pessoa Física" ${cli.tipo === 'Pessoa Física' ? 'selected' : ''}>Pessoa Física</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-600">WhatsApp (com DDD)</label>
+              <input type="tel" id="cliTel" value="${cli.telefone || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" placeholder="22999999999" />
+            </div>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600">CPF / CNPJ (Opcional)</label>
+            <input type="text" id="cliDoc" value="${cli.documento || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600">Endereço de Entrega</label>
+            <input type="text" id="cliEnd" value="${cli.endereco || ''}" class="w-full border border-slate-200 rounded-xl px-3 py-2 mt-1" />
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <button onclick="closeModal()" class="py-2.5 bg-slate-100 rounded-xl font-semibold">Cancelar</button>
+            <button onclick="salvarCliente('${editId || ''}')" class="py-2.5 bg-orange-600 text-white rounded-xl font-semibold">Salvar</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function salvarCliente(editId) {
+      const nome = document.getElementById("cliNome").value.trim();
+      if (!nome) return showToast("Informe o nome.");
+      const obj = {
+        id: editId || uid(),
+        nome,
+        tipo: document.getElementById("cliTipo").value,
+        telefone: document.getElementById("cliTel").value.trim(),
+        documento: document.getElementById("cliDoc").value.trim(),
+        endereco: document.getElementById("cliEnd").value.trim()
+      };
+      if (editId) {
+        const idx = db.Clientes.findIndex(c => c.id === editId);
+        db.Clientes[idx] = obj;
+      } else {
+        db.Clientes.push(obj);
+      }
+      saveLocalDB();
+      closeModal();
+      renderClientes();
+      showToast("Cliente cadastrado!");
+    }
+
+    // 7. CONFIGURAÇÕES, BRANDING E INTEGRAÇÃO GOOGLE CLOUD
+    function applyBranding() {
+      const nome = getConfig("nomeEmpresa") || "Minifábrica de Salgados";
+      const logo = getConfig("logoBase64");
+      const scriptUrl = getConfig("googleScriptUrl");
+      const sheetUrl = getConfig("sheetUrl");
+
+      document.getElementById("headerTitle").textContent = nome;
+      document.getElementById("cfgNomeEmpresa").value = nome;
+      document.getElementById("cfgGoogleScriptUrl").value = scriptUrl;
+
+      if (logo) {
+        document.getElementById("headerLogo").src = logo;
+        document.getElementById("configPreviewLogo").src = logo;
+      }
+      if (sheetUrl) {
+        document.getElementById("googleSheetLinkBox").classList.remove("hidden");
+        document.getElementById("googleSheetAnchor").href = sheetUrl;
+      }
+    }
+
+    function handleLogoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        // Redimensiona imagem para não pesar no localStorage/Google Sheets
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement("canvas");
+          const size = 160;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, size, size);
+          const compressed = canvas.toDataURL("image/jpeg", 0.8);
+          setConfig("logoBase64", compressed);
+          applyBranding();
+          saveLocalDB();
+          showToast("Logo atualizada!");
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function salvarConfiguracoes() {
+      const nome = document.getElementById("cfgNomeEmpresa").value.trim();
+      const novaSenha = document.getElementById("cfgSenhaAdm").value.trim();
+      if (nome) setConfig("nomeEmpresa", nome);
+      if (novaSenha) setConfig("senhaAdm", novaSenha);
+      
+      applyBranding();
+      saveLocalDB();
+      showToast("Configurações salvas!");
+    }
+
+    async function conectarGoogleCloud() {
+      const url = document.getElementById("cfgGoogleScriptUrl").value.trim();
+      if (!url) return showToast("Cole a URL do Google Apps Script primeiro.");
+      setConfig("googleScriptUrl", url);
+      saveLocalDB(false);
+
+      updateSyncStatus("syncing");
+      try {
+        // 1. Verifica se já existem dados na nuvem
+        const getRes = await fetch(url);
+        const getJson = await getRes.json();
+
+        if (getJson.status === "success" && getJson.data) {
+          const cloudData = getJson.data;
+          // Mescla inteligente: preserva registros locais que ainda não estão na nuvem
+          const tables = ["Colaboradores", "Ponto", "Insumos", "Produtos", "Clientes", "Pedidos"];
+          tables.forEach(t => {
+            const localArr = db[t] || [];
+            const cloudArr = cloudData[t] || [];
+            const map = new Map();
+            cloudArr.forEach(item => map.set(item.id, item));
+            localArr.forEach(item => map.set(item.id, item)); // Local mais recente sobrescreve
+            db[t] = Array.from(map.values());
+          });
+
+          if (getJson.sheetUrl) setConfig("sheetUrl", getJson.sheetUrl);
+        }
+
+        // 2. Envia o banco consolidado de volta para a nuvem
+        await syncWithCloud(false);
+        applyBranding();
+        renderAll();
+        showToast("Conectado e sincronizado com o Google Drive!");
+      } catch (err) {
+        console.error(err);
+        updateSyncStatus("error");
+        showToast("Erro ao conectar. Verifique se a URL foi implantada como 'Qualquer pessoa'.");
+      }
+    }
+
+    async function syncWithCloud(silent = false) {
+      const url = getConfig("googleScriptUrl");
+      if (!url) return;
+      updateSyncStatus("syncing");
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          body: JSON.stringify({ action: "SYNC_ALL", data: db })
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+          if (json.sheetUrl) setConfig("sheetUrl", json.sheetUrl);
+          saveLocalDB(false);
+          updateSyncStatus("cloud");
+          if (!silent) showToast("Backup em nuvem concluído!");
+        } else {
+          updateSyncStatus("error");
+        }
+      } catch (e) {
+        updateSyncStatus("error");
+        if (!silent) showToast("Sem internet. Dados salvos localmente.");
+      }
+    }
+
+    function updateSyncStatus(state) {
+      const dot = document.getElementById("syncIndicator");
+      const txt = document.getElementById("syncText");
+      if (state === "syncing") {
+        dot.className = "w-2 h-2 rounded-full bg-amber-500 animate-ping";
+        txt.textContent = "Sincronizando...";
+      } else if (state === "cloud") {
+        dot.className = "w-2 h-2 rounded-full bg-blue-500";
+        txt.textContent = "Sincronizado na Nuvem";
+      } else if (state === "error") {
+        dot.className = "w-2 h-2 rounded-full bg-rose-500";
+        txt.textContent = "Offline (Salvo local)";
+      } else {
+        dot.className = "w-2 h-2 rounded-full bg-emerald-500";
+        txt.textContent = getConfig("googleScriptUrl") ? "Nuvem ativa" : "Salvo localmente";
+      }
+    }
+
+    function baixarBackupJson() {
+      const blob = new Blob([JSON.stringify(db, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `backup_minifabrica_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+    }
+
+    function renderRelatorioGeral() {
+      const totalVendas = db.Pedidos.reduce((s, p) => s + Number(p.valorTotal || 0), 0);
+      const totalRecebido = db.Pedidos.reduce((s, p) => s + Number(p.valorPago || 0), 0);
+      const valorEstoque = db.Insumos.reduce((s, i) => s + (Number(i.quantidade) * Number(i.custoUnitario)), 0);
+      const folhaAcumulada = db.Ponto.reduce((s, p) => s + Number(p.valorCalculado || 0), 0);
+
+      document.getElementById("relatorioGeralBox").innerHTML = `
+        <div class="flex justify-between"><span>Total de Pedidos Registrados:</span><strong>${db.Pedidos.length}</strong></div>
+        <div class="flex justify-between"><span>Faturamento Bruto em Pedidos:</span><strong class="text-slate-900">${formatMoney(totalVendas)}</strong></div>
+        <div class="flex justify-between"><span>Total Já Recebido em Caixa:</span><strong class="text-emerald-700">${formatMoney(totalRecebido)}</strong></div>
+        <div class="flex justify-between"><span>Total a Receber de Clientes:</span><strong class="text-rose-600">${formatMoney(totalVendas - totalRecebido)}</strong></div>
+        <hr class="border-slate-200 my-1" />
+        <div class="flex justify-between"><span>Valor Imobilizado em Matéria-Prima:</span><strong>${formatMoney(valorEstoque)}</strong></div>
+        <div class="flex justify-between"><span>Custo Acumulado de Mão de Obra:</span><strong>${formatMoney(folhaAcumulada)}</strong></div>
+      `;
+    }
+
+    // 8. UTILITÁRIOS DE UI E WHATSAPP
+    function abrirWhatsApp(telefone, mensagem) {
+      let num = telefone.replace(/\D/g, "");
+      if (num.length === 10 || num.length === 11) num = "55" + num;
+      const url = `https://wa.me/${num}?text=${encodeURIComponent(mensagem)}`;
+      window.open(url, "_blank");
+    }
+
+    function openModal(html) {
+      document.getElementById("modalContent").innerHTML = html;
+      document.getElementById("modalBackdrop").classList.remove("hidden");
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      document.getElementById("modalBackdrop").classList.add("hidden");
+    }
+
+    function renderAll() {
+      renderPonto();
+      renderPedidos();
+      renderEstoque();
+      renderClientes();
+    }
+  </script>
+</body>
+</html>
