@@ -9,6 +9,8 @@
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Identity Services (OAuth 2.0) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -42,32 +44,42 @@
   </script>
 
   <!-- HEADER SUPERIOR -->
-  <header class="glass-header sticky top-0 z-30 border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm">
-    <div class="flex items-center gap-3">
-      <img id="headerLogo" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='50' fill='%23ffedd5'/><text x='50' y='68' font-size='50' text-anchor='middle'>🥟</text></svg>" alt="Logo" class="w-10 h-10 rounded-full object-cover border border-orange-200 bg-orange-50" />
-      <div>
-        <h1 id="headerTitle" class="font-bold text-slate-900 text-base leading-tight">Minifábrica Salgados</h1>
+  <header class="glass-header sticky top-0 z-30 border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm gap-2">
+    <div class="flex items-center gap-3 min-w-0">
+      <img id="headerLogo" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='50' fill='%23ffedd5'/><text x='50' y='68' font-size='50' text-anchor='middle'>🥟</text></svg>" alt="Logo" class="w-10 h-10 rounded-full object-cover border border-orange-200 bg-orange-50 shrink-0" />
+      <div class="min-w-0">
+        <h1 id="headerTitle" class="font-bold text-slate-900 text-base leading-tight truncate">Minifábrica Salgados</h1>
         <div class="flex items-center gap-1.5 text-xs">
-          <span id="syncIndicator" class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span id="syncText" class="text-slate-500">Salvo localmente</span>
+          <span id="syncIndicator" class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+          <span id="syncText" class="text-slate-500 truncate">Salvo localmente</span>
         </div>
       </div>
     </div>
 
-    <div class="flex items-center gap-2">
-      <button onclick="syncWithCloud()" title="Sincronizar Nuvem" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95 transition">
+    <div class="flex items-center gap-1.5 shrink-0">
+      <button onclick="syncWithCloud()" title="Sincronizar Conta Google" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95 transition">
         <i data-lucide="cloud-upload" class="w-5 h-5"></i>
       </button>
 
-      <button onclick="toggleAdmModal()" id="admBadgeBtn" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white shadow-sm active:scale-95 transition">
+      <button onclick="abrirModalContaGoogle()" id="googleLoginHeaderBtn" class="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm active:scale-95 transition">
+        <i data-lucide="log-in" class="w-4 h-4"></i>
+        <span id="googleLoginBtnText" class="max-w-[90px] truncate">Google</span>
+      </button>
+
+      <button onclick="toggleAdmModal()" id="admBadgeBtn" class="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white shadow-sm active:scale-95 transition">
         <i data-lucide="lock" class="w-4 h-4" id="admLockIcon"></i>
         <span id="admBtnText">Operador</span>
       </button>
     </div>
   </header>
 
+  <!-- BANNER DE SESSÃO GOOGLE / BLOQUEIO SE NÃO APROVADO -->
+  <div id="googleSessionBanner" class="max-w-4xl mx-auto px-4 pt-3 hidden">
+    <div id="googleSessionCard" class="rounded-2xl p-3.5 border flex items-center justify-between gap-3 text-xs"></div>
+  </div>
+
   <!-- CONTEÚDO PRINCIPAL -->
-  <main class="max-w-4xl mx-auto p-4 space-y-6">
+  <main id="mainAppContainer" class="max-w-4xl mx-auto p-4 space-y-6">
 
     <!-- ==================== 1. ABA PONTO POR SELFIE / MATRÍCULA ==================== -->
     <section id="view-ponto" class="view-section space-y-5">
@@ -98,7 +110,6 @@
             </button>
           </div>
 
-          <!-- Fallback caso a selfie falhe: desbloqueio ADM por matrícula -->
           <div class="pt-1 flex justify-center">
             <button onclick="abrirDesbloqueioAdmMatricula()" class="text-[11px] text-orange-100 underline hover:text-white flex items-center gap-1">
               <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> Selfie falhou? Desbloqueio ADM por matrícula
@@ -123,7 +134,7 @@
         <div id="listaPontoHoje" class="space-y-2.5"></div>
       </div>
 
-      <!-- Painel Administrativo: Horas Extras, Recibos, Espelho WhatsApp & Aceite -->
+      <!-- Painel Administrativo de Ponto -->
       <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border-2 border-amber-400 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
@@ -135,7 +146,6 @@
           </button>
         </div>
 
-        <!-- Configuração de Horas Extras e Aceite de Pagamento na Batida -->
         <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-3 space-y-3 text-xs">
           <div class="flex items-center justify-between">
             <span class="font-bold text-slate-800">Exigir aceite de pagamento na batida de ponto</span>
@@ -274,6 +284,68 @@
 
     <!-- ==================== 5. ABA RELATÓRIOS & CONFIGURAÇÕES ==================== -->
     <section id="view-config" class="view-section hidden space-y-5">
+
+      <!-- Login & Banco Descentralizado na Conta Google da Fábrica -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+              <i data-lucide="cloud" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-slate-900 text-base">Conta Google & Banco Descentralizado</h3>
+              <p class="text-xs text-slate-500">Cada fábrica cria e usa o próprio banco no Google Drive/Sheets</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="googleAccountInfoBox" class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1">
+          <p class="text-slate-500">Nenhuma conta Google conectada no momento.</p>
+        </div>
+
+        <div class="adm-only space-y-2 pt-1">
+          <label class="block text-xs font-semibold text-slate-700">Google Cloud OAuth Client ID</label>
+          <input type="text" id="cfgGoogleClientId" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono" placeholder="1234567890-xxxx.apps.googleusercontent.com" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button onclick="loginComGoogle(true)" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm">
+            <i data-lucide="log-in" class="w-4 h-4"></i> Entrar com Google
+          </button>
+          <button onclick="baixarBackupJson()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5">
+            <i data-lucide="download" class="w-4 h-4"></i> Backup Local (.json)
+          </button>
+        </div>
+
+        <div id="googleSheetLinkBox" class="hidden pt-2 border-t border-slate-100 flex items-center justify-between">
+          <a id="googleSheetAnchor" href="#" target="_blank" class="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline">
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Abrir Planilha da Conta Logada
+          </a>
+          <button onclick="logoutGoogle()" class="text-xs text-rose-600 font-semibold hover:underline">Sair da Conta</button>
+        </div>
+      </div>
+
+      <!-- E-mails Google Aprovados pelo ADM -->
+      <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border-2 border-amber-400 space-y-3">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="mail-check" class="w-5 h-5 text-amber-600"></i> E-mails Google Aprovados (Fábricas)
+        </h3>
+        <p class="text-xs text-slate-500">Apenas contas Google aprovadas aqui (ou o e-mail master) podem acessar e criar o banco na própria conta.</p>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-600">E-mail Master / Supervisor</label>
+          <input type="email" id="cfgEmailMaster" onchange="salvarEmailsAprovados()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs mt-1" placeholder="seu.email@gmail.com" />
+        </div>
+
+        <div class="flex gap-2">
+          <input type="email" id="novoEmailAprovadoInput" class="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs" placeholder="novo.email.fabrica@gmail.com" />
+          <button onclick="adicionarEmailAprovado()" class="bg-amber-600 text-white px-3.5 rounded-xl text-xs font-bold">Aprovar</button>
+        </div>
+
+        <div id="listaEmailsAprovadosBox" class="space-y-1.5 text-xs"></div>
+      </div>
+
+      <!-- Personalização do Estabelecimento (ADM) -->
       <div class="adm-only bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-4">
         <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
           <i data-lucide="store" class="w-5 h-5 text-orange-600"></i> Identidade da Minifábrica
@@ -305,38 +377,6 @@
         <button onclick="salvarConfiguracoes()" class="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm shadow-sm active:scale-95 transition">
           Salvar Personalização
         </button>
-      </div>
-
-      <!-- Integração Google Cloud -->
-      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
-        <div class="flex items-center gap-2">
-          <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
-            <i data-lucide="database" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h3 class="font-bold text-slate-900 text-base">Backup & Nuvem Google</h3>
-            <p class="text-xs text-slate-500">Sincronização automática com Google Sheets</p>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">URL do Google Apps Script (Web App)</label>
-          <input type="url" id="cfgGoogleScriptUrl" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono" placeholder="https://script.google.com/macros/s/.../exec" />
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <button onclick="conectarGoogleCloud()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Conectar / Mesclar
-          </button>
-          <button onclick="baixarBackupJson()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5">
-            <i data-lucide="download" class="w-4 h-4"></i> Backup Local (.json)
-          </button>
-        </div>
-        <div id="googleSheetLinkBox" class="hidden pt-2 border-t border-slate-100">
-          <a id="googleSheetAnchor" href="#" target="_blank" class="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline">
-            <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Abrir Planilha Banco de Dados no Google Drive
-          </a>
-        </div>
       </div>
 
       <!-- Relatório Consolidado Avançado (ADM) -->
@@ -412,13 +452,29 @@
   <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl z-50 hidden"></div>
 
   <script>
-    const STORAGE_KEY = "salgados_pro_db_v3";
+    const STORAGE_KEY = "salgados_pro_db_v4";
+    const SESSION_KEY = "salgados_pro_google_session_v1";
+    const DB_SHEET_TITLE = "DB_Minifabrica_Salgados_PWA";
+    const DEFAULT_GOOGLE_CLIENT_ID = ""; // Opcional: cole aqui seu Client ID padrão do Google Cloud
+
+    const TABLE_SCHEMAS = {
+      Config: ["chave", "valor"],
+      Colaboradores: ["id", "matricula", "nome", "telefone", "valorHora", "formaPagamento", "chavePix", "selfieRef", "ativo"],
+      Ponto: ["id", "colaboradorId", "data", "entrada", "saida", "selfieEntrada", "selfieSaida", "horasNormais", "horasExtras", "percentualExtra", "valorCalculado", "aceitePagamento", "dataAceite", "ajustadaConsentimento", "tagAjuste"],
+      Insumos: ["id", "nome", "unidade", "quantidade", "custoUnitario", "estoqueMinimo"],
+      Produtos: ["id", "nome", "precoCento", "custoProducao", "quantidadeEstoque", "estoqueMinimo"],
+      HistoricoEstoqueProdutos: ["id", "produtoId", "produtoNome", "data", "tipo", "quantidadeDelta", "saldoApos", "referencia"],
+      Clientes: ["id", "nome", "tipo", "telefone", "documento", "endereco"],
+      Pedidos: ["id", "clienteId", "dataPedido", "dataEntrega", "dataVencimento", "itensJson", "valorTotal", "valorPago", "pagamentosJson", "statusEntrega", "observacoes"]
+    };
+
     let isAdm = false;
     let pedidoFilter = "TODOS";
     let tipoRelatorioAtual = "GERAL";
     let pedidosSelecionadosIds = new Set();
     let cameraStream = null;
     let selfieCapturadaTemp = "";
+    let googleSession = null; // { email, name, picture, accessToken, expiresAt, approved, spreadsheetId, sheetUrl }
 
     let db = {
       Config: [
@@ -426,7 +482,10 @@
         { chave: "enderecoBase", valor: "" },
         { chave: "logoBase64", valor: "" },
         { chave: "senhaAdm", valor: "1234" },
-        { chave: "googleScriptUrl", valor: "" },
+        { chave: "googleClientId", valor: DEFAULT_GOOGLE_CLIENT_ID },
+        { chave: "emailMaster", valor: "" },
+        { chave: "emailsAprovados", valor: "[]" },
+        { chave: "spreadsheetId", valor: "" },
         { chave: "sheetUrl", valor: "" },
         { chave: "exigirAceitePonto", valor: "true" },
         { chave: "habilitarExtras", valor: "true" },
@@ -444,14 +503,22 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       loadLocalDB();
+      loadGoogleSession();
       seedInitialDataIfEmpty();
       applyBranding();
       syncRegrasPontoInputs();
+      renderEmailsAprovados();
+      renderGoogleAccountUI();
       startClock();
       setDefaultDates();
       aplicarFiltroRelatorio('MENSAL', false);
       renderAll();
       lucide.createIcons();
+
+      // Se já houver sessão Google válida salva, tenta sincronizar suavemente sem perder dados no reload
+      if (googleSession && googleSession.accessToken && Date.now() < googleSession.expiresAt && googleSession.approved) {
+        syncWithCloud(true);
+      }
     });
 
     function loadLocalDB() {
@@ -467,7 +534,7 @@
     function saveLocalDB(autoSync = true) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
       updateSyncStatus("saved");
-      if (autoSync && getConfig("googleScriptUrl")) {
+      if (autoSync && googleSession && googleSession.accessToken && googleSession.approved) {
         syncWithCloud(true);
       }
     }
@@ -507,6 +574,379 @@
 
     function formatMoney(val) {
       return Number(val || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    // =========================================================================
+    // LOGIN GOOGLE OAUTH 2.0 + SESSÃO PERSISTENTE + CONTROLE DE E-MAILS APROVADOS
+    // + BANCO DE DADOS DESCENTRALIZADO NA CONTA DA FÁBRICA
+    // =========================================================================
+    function loadGoogleSession() {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (raw) {
+        try {
+          googleSession = JSON.parse(raw);
+        } catch (e) { googleSession = null; }
+      }
+    }
+
+    function saveGoogleSession() {
+      if (googleSession) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(googleSession));
+      } else {
+        localStorage.removeItem(SESSION_KEY);
+      }
+    }
+
+    function getListaEmailsAprovados() {
+      try {
+        const arr = JSON.parse(getConfig("emailsAprovados") || "[]");
+        return Array.isArray(arr) ? arr.map(e => String(e).trim().toLowerCase()) : [];
+      } catch (e) { return []; }
+    }
+
+    function emailEstaAprovado(email) {
+      if (!email) return false;
+      const eLower = String(email).trim().toLowerCase();
+      const master = String(getConfig("emailMaster") || "").trim().toLowerCase();
+      const lista = getListaEmailsAprovados();
+      // Se nenhum email master nem lista estiver configurada ainda no primeiro uso, libera para configuração inicial do ADM
+      if (!master && lista.length === 0) return true;
+      return (master && eLower === master) || lista.includes(eLower);
+    }
+
+    function salvarEmailsAprovados() {
+      const master = document.getElementById("cfgEmailMaster").value.trim().toLowerCase();
+      setConfig("emailMaster", master);
+      saveLocalDB(false);
+      renderGoogleAccountUI();
+      showToast("E-mail master salvo!");
+    }
+
+    function adicionarEmailAprovado() {
+      const input = document.getElementById("novoEmailAprovadoInput");
+      const novo = (input.value || "").trim().toLowerCase();
+      if (!novo || !novo.includes("@")) return showToast("Informe um e-mail Google válido.");
+      const lista = getListaEmailsAprovados();
+      if (!lista.includes(novo)) {
+        lista.push(novo);
+        setConfig("emailsAprovados", JSON.stringify(lista));
+        saveLocalDB(false);
+      }
+      input.value = "";
+      renderEmailsAprovados();
+      renderGoogleAccountUI();
+      showToast(`E-mail ${novo} aprovado!`);
+    }
+
+    function removerEmailAprovado(email) {
+      const lista = getListaEmailsAprovados().filter(e => e !== email);
+      setConfig("emailsAprovados", JSON.stringify(lista));
+      saveLocalDB(false);
+      renderEmailsAprovados();
+      renderGoogleAccountUI();
+    }
+
+    function renderEmailsAprovados() {
+      const box = document.getElementById("listaEmailsAprovadosBox");
+      if (!box) return;
+      const lista = getListaEmailsAprovados();
+      if (lista.length === 0) {
+        box.innerHTML = `<p class="text-slate-400">Nenhum e-mail de fábrica adicionado ainda.</p>`;
+        return;
+      }
+      box.innerHTML = lista.map(e => `
+        <div class="flex items-center justify-between bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+          <span class="font-mono text-slate-800">${e}</span>
+          <button onclick="removerEmailAprovado('${e}')" class="text-rose-600 font-bold text-xs">Remover</button>
+        </div>
+      `).join("");
+    }
+
+    function abrirModalContaGoogle() {
+      if (googleSession && googleSession.email) {
+        openModal(`
+          <div class="space-y-3 text-center">
+            ${googleSession.picture ? `<img src="${googleSession.picture}" class="w-14 h-14 rounded-full mx-auto border border-slate-200" />` : ''}
+            <h3 class="font-bold text-base text-slate-900">${googleSession.name || googleSession.email}</h3>
+            <p class="text-xs text-slate-500 font-mono">${googleSession.email}</p>
+            <p class="text-xs font-semibold ${googleSession.approved ? 'text-emerald-700' : 'text-rose-600'}">
+              ${googleSession.approved ? '✅ Conta aprovada • Banco na nuvem desta conta' : '⛔ Conta pendente de aprovação do ADM'}
+            </p>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+              <button onclick="closeModal(); syncWithCloud(false);" class="py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold">Sincronizar Agora</button>
+              <button onclick="logoutGoogle(); closeModal();" class="py-2.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold">Trocar / Sair</button>
+            </div>
+          </div>
+        `);
+      } else {
+        loginComGoogle(true);
+      }
+    }
+
+    function loginComGoogle(interactive = true) {
+      const clientId = (document.getElementById("cfgGoogleClientId")?.value || getConfig("googleClientId") || DEFAULT_GOOGLE_CLIENT_ID).trim();
+      if (!clientId) {
+        switchTab("config");
+        return showToast("Configure o Google Cloud OAuth Client ID em Ajustes.");
+      }
+      setConfig("googleClientId", clientId);
+      saveLocalDB(false);
+
+      if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+        return showToast("Serviço de login Google carregando... tente novamente em 2s.");
+      }
+
+      updateSyncStatus("syncing");
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets",
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error) {
+            updateSyncStatus("error");
+            return showToast("Falha no login Google: " + tokenResponse.error);
+          }
+
+          try {
+            const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+              headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+            });
+            const userInfo = await userRes.json();
+            const email = (userInfo.email || "").toLowerCase();
+
+            // Se ainda não havia emailMaster configurado, define o primeiro login como master se desejado ou valida
+            if (!getConfig("emailMaster") && getListaEmailsAprovados().length === 0) {
+              setConfig("emailMaster", email);
+              saveLocalDB(false);
+            }
+
+            const approved = emailEstaAprovado(email);
+            googleSession = {
+              email,
+              name: userInfo.name || email,
+              picture: userInfo.picture || "",
+              accessToken: tokenResponse.access_token,
+              expiresAt: Date.now() + ((tokenResponse.expires_in || 3600) * 1000) - 60000,
+              approved,
+              spreadsheetId: "",
+              sheetUrl: ""
+            };
+            saveGoogleSession();
+            renderGoogleAccountUI();
+            renderEmailsAprovados();
+
+            if (!approved) {
+              updateSyncStatus("error");
+              showToast(`E-mail ${email} não aprovado pelo ADM.`);
+              return;
+            }
+
+            await inicializarOuSincronizarBancoDaContaGoogle();
+          } catch (err) {
+            console.error(err);
+            updateSyncStatus("error");
+            showToast("Erro ao obter dados da conta Google.");
+          }
+        }
+      });
+
+      tokenClient.requestAccessToken({ prompt: interactive ? "consent" : "" });
+    }
+
+    function logoutGoogle() {
+      if (googleSession && googleSession.accessToken && window.google?.accounts?.oauth2) {
+        try { window.google.accounts.oauth2.revoke(googleSession.accessToken); } catch (e) {}
+      }
+      googleSession = null;
+      saveGoogleSession();
+      renderGoogleAccountUI();
+      updateSyncStatus("saved");
+      showToast("Sessão Google encerrada.");
+    }
+
+    function renderGoogleAccountUI() {
+      const btnText = document.getElementById("googleLoginBtnText");
+      const infoBox = document.getElementById("googleAccountInfoBox");
+      const banner = document.getElementById("googleSessionBanner");
+      const bannerCard = document.getElementById("googleSessionCard");
+      const mainContainer = document.getElementById("mainAppContainer");
+
+      if (googleSession && googleSession.email) {
+        btnText.textContent = googleSession.email.split("@")[0];
+        infoBox.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-bold text-slate-900">${googleSession.name || googleSession.email}</p>
+              <p class="font-mono text-[11px] text-slate-500">${googleSession.email}</p>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${googleSession.approved ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
+              ${googleSession.approved ? 'Aprovado' : 'Não Aprovado'}
+            </span>
+          </div>
+        `;
+
+        if (!googleSession.approved) {
+          banner.classList.remove("hidden");
+          bannerCard.className = "rounded-2xl p-3.5 border border-rose-300 bg-rose-50 text-rose-900 flex items-center justify-between gap-3 text-xs";
+          bannerCard.innerHTML = `
+            <div>
+              <strong>Acesso não aprovado:</strong> O e-mail <code>${googleSession.email}</code> ainda não foi aprovado pelo ADM.
+            </div>
+            <button onclick="logoutGoogle()" class="px-3 py-1.5 rounded-lg bg-rose-600 text-white font-bold shrink-0">Sair</button>
+          `;
+          mainContainer.classList.add("opacity-40", "pointer-events-none");
+        } else {
+          banner.classList.add("hidden");
+          mainContainer.classList.remove("opacity-40", "pointer-events-none");
+        }
+      } else {
+        btnText.textContent = "Google";
+        banner.classList.add("hidden");
+        mainContainer.classList.remove("opacity-40", "pointer-events-none");
+        infoBox.innerHTML = `<p class="text-slate-500">Conecte a conta Google da fábrica para criar e sincronizar o banco de dados naquela conta.</p>`;
+      }
+    }
+
+    async function inicializarOuSincronizarBancoDaContaGoogle() {
+      if (!googleSession || !googleSession.accessToken || !googleSession.approved) return;
+
+      updateSyncStatus("syncing");
+      const headers = {
+        Authorization: `Bearer ${googleSession.accessToken}`,
+        "Content-Type": "application/json"
+      };
+
+      try {
+        // 1. Procura a planilha na conta Google logada
+        const query = encodeURIComponent(`name='${DB_SHEET_TITLE}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+        const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,webViewLink)`, { headers });
+        const searchJson = await searchRes.json();
+
+        let spreadsheetId = "";
+        let sheetUrl = "";
+
+        if (searchJson.files && searchJson.files.length > 0) {
+          spreadsheetId = searchJson.files[0].id;
+          sheetUrl = searchJson.files[0].webViewLink || `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+        } else {
+          // 2. Cria a planilha com todas as abas diretamente na conta Google da fábrica
+          const sheetsPayload = Object.keys(TABLE_SCHEMAS).map(title => ({ properties: { title } }));
+          const createRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              properties: { title: DB_SHEET_TITLE },
+              sheets: sheetsPayload
+            })
+          });
+          const created = await createRes.json();
+          spreadsheetId = created.spreadsheetId;
+          sheetUrl = created.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+
+          // Escreve os cabeçalhos de cada aba
+          for (const [sheetName, cols] of Object.entries(TABLE_SCHEMAS)) {
+            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName + "!A1")}?valueInputOption=USER_ENTERED`, {
+              method: "PUT",
+              headers,
+              body: JSON.stringify({ values: [cols] })
+            });
+          }
+        }
+
+        googleSession.spreadsheetId = spreadsheetId;
+        googleSession.sheetUrl = sheetUrl;
+        saveGoogleSession();
+        setConfig("spreadsheetId", spreadsheetId);
+        setConfig("sheetUrl", sheetUrl);
+        applyBranding();
+
+        // 3. Lê dados existentes na nuvem e faz merge com dados locais (sem perder dados locais)
+        for (const [tableName, cols] of Object.entries(TABLE_SCHEMAS)) {
+          if (tableName === "Config") continue;
+          const range = encodeURIComponent(`${tableName}!A2:Z1000`);
+          const valRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`, { headers });
+          const valJson = await valRes.json();
+          const rows = valJson.values || [];
+
+          const cloudArr = rows.map(row => {
+            const obj = {};
+            cols.forEach((col, idx) => {
+              let v = row[idx] ?? "";
+              if (typeof v === "string" && (v.startsWith("[") || v.startsWith("{"))) {
+                try { v = JSON.parse(v); } catch (e) {}
+              }
+              obj[col] = v;
+            });
+            return obj;
+          }).filter(o => o.id);
+
+          const localArr = db[tableName] || [];
+          const map = new Map();
+          cloudArr.forEach(item => map.set(item.id, item));
+          localArr.forEach(item => map.set(item.id, item));
+          db[tableName] = Array.from(map.values());
+        }
+
+        // 4. Grava o estado consolidado de volta na planilha da conta logada
+        await gravarTabelasNaPlanilhaGoogle(spreadsheetId, headers);
+        saveLocalDB(false);
+        renderAll();
+        updateSyncStatus("cloud");
+        showToast("Banco de dados sincronizado na conta Google!");
+      } catch (err) {
+        console.error(err);
+        updateSyncStatus("error");
+        showToast("Falha ao acessar Google Drive/Sheets. Tente fazer login novamente.");
+      }
+    }
+
+    async function gravarTabelasNaPlanilhaGoogle(spreadsheetId, headers) {
+      for (const [tableName, cols] of Object.entries(TABLE_SCHEMAS)) {
+        const records = db[tableName] || [];
+        const rows = [cols].concat(records.map(item => cols.map(c => {
+          const val = item[c];
+          return (typeof val === "object" && val !== null) ? JSON.stringify(val) : (val !== undefined ? val : "");
+        })));
+
+        // Limpa até 1000 linhas e grava
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tableName + "!A1:Z1000")}:clear`, {
+          method: "POST",
+          headers
+        });
+
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(tableName + "!A1")}?valueInputOption=USER_ENTERED`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ values: rows })
+        });
+      }
+    }
+
+    async function syncWithCloud(silent = false) {
+      if (!googleSession || !googleSession.accessToken || !googleSession.approved) return;
+      if (Date.now() >= googleSession.expiresAt) {
+        if (!silent) loginComGoogle(false);
+        return;
+      }
+
+      updateSyncStatus("syncing");
+      try {
+        const spreadsheetId = googleSession.spreadsheetId || getConfig("spreadsheetId");
+        if (!spreadsheetId) {
+          await inicializarOuSincronizarBancoDaContaGoogle();
+          return;
+        }
+        const headers = {
+          Authorization: `Bearer ${googleSession.accessToken}`,
+          "Content-Type": "application/json"
+        };
+        await gravarTabelasNaPlanilhaGoogle(spreadsheetId, headers);
+        saveLocalDB(false);
+        updateSyncStatus("cloud");
+        if (!silent) showToast("Sincronizado na conta Google!");
+      } catch (e) {
+        updateSyncStatus("error");
+        if (!silent) showToast("Sem conexão ou sessão expirada. Salvo localmente.");
+      }
     }
 
     // NAVEGAÇÃO & ADM
@@ -586,9 +1026,7 @@
       setInterval(update, 1000);
     }
 
-    // =========================================================================
-    // 1, 2, 3 & 6: PONTO POR SELFIE, FALLBACK ADM MATRÍCULA, ACEITE & EXTRAS
-    // =========================================================================
+    // PONTO POR SELFIE, FALLBACK ADM MATRÍCULA, ACEITE & EXTRAS
     function syncRegrasPontoInputs() {
       document.getElementById("cfgExigirAceitePonto").checked = getConfig("exigirAceitePonto") !== "false";
       document.getElementById("cfgHabilitarExtras").checked = getConfig("habilitarExtras") !== "false";
@@ -611,7 +1049,7 @@
       openModal(`
         <div class="space-y-3 text-center">
           <h3 class="font-bold text-base text-slate-900">${titulo}</h3>
-          <p class="text-xs text-slate-500">Posicione o rosto na câmera e clique em Capturar Foto.</p>
+          <p class="text-xs text-slate-500">Posicione o rosto na câmera e clique em Capturar Selfie.</p>
           <div class="relative rounded-2xl overflow-hidden bg-slate-900 aspect-square max-w-[280px] mx-auto flex items-center justify-center">
             <video id="videoSelfie" autoplay playsinline class="w-full h-full object-cover"></video>
             <img id="previewSelfieCapturada" class="hidden w-full h-full object-cover" />
@@ -657,8 +1095,7 @@
       if (!vid || !canvas) return;
       canvas.width = 240;
       canvas.height = 240;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(vid, 0, 0, 240, 240);
+      canvas.getContext("2d").drawImage(vid, 0, 0, 240, 240);
       selfieCapturadaTemp = canvas.toDataURL("image/jpeg", 0.7);
 
       vid.classList.add("hidden");
@@ -760,8 +1197,6 @@
       const hojeStr = dataOverride || now.toISOString().split("T")[0];
       const horaAtual = horaOverride || now.toTimeString().slice(0, 5);
 
-      let registroAlvo = null;
-
       if (tipo === "ENTRADA") {
         const aberto = db.Ponto.find(p => p.colaboradorId === colab.id && p.data === hojeStr && !p.saida);
         if (aberto) {
@@ -769,7 +1204,7 @@
           return showToast(`${colab.nome} já possui entrada hoje às ${aberto.entrada}.`);
         }
 
-        registroAlvo = {
+        db.Ponto.push({
           id: uid(),
           colaboradorId: colab.id,
           data: hojeStr,
@@ -785,8 +1220,7 @@
           dataAceite: "",
           ajustadaConsentimento: ajustadoManual,
           tagAjuste: ajustadoManual ? tagAjuste : ""
-        };
-        db.Ponto.push(registroAlvo);
+        });
       } else {
         const aberto = db.Ponto.find(p => p.colaboradorId === colab.id && p.data === hojeStr && !p.saida);
         if (!aberto) {
@@ -800,14 +1234,12 @@
           aberto.tagAjuste = tagAjuste || "ajustada com consentimento do colaborador";
         }
         calcularHorasRegistro(aberto, colab);
-        registroAlvo = aberto;
       }
 
       saveLocalDB();
       renderPonto();
       document.getElementById("pontoFeedback").textContent = `${tipo} registrada para ${colab.nome} às ${horaAtual}.`;
 
-      // Verifica se há valor pendente de aceite de pagamento (se ativado pelo ADM)
       const exigirAceite = getConfig("exigirAceitePonto") !== "false";
       const pendentesAceite = db.Ponto.filter(p => p.colaboradorId === colab.id && Number(p.valorCalculado || 0) > 0 && !p.aceitePagamento);
 
@@ -1276,9 +1708,7 @@
       abrirWhatsApp(colab.telefone, msg);
     }
 
-    // =========================================================================
-    // 4, 7 & 8: PEDIDOS, LAYOUT VERTICAL DE ITEM, ESTOQUE SALGADOS, MAPS & WHATSAPP
-    // =========================================================================
+    // PEDIDOS, FILTRO QUITADOS, BOTÃO "FATURAR" & GOOGLE MAPS
     function filtrarPedidos(status, btnEl) {
       pedidoFilter = status;
       document.querySelectorAll(".pedido-filter-btn").forEach(b => {
@@ -1441,7 +1871,6 @@
             </div>
           </div>
 
-          <!-- #7: Quantidade multiplicadora abaixo da descrição do item -->
           <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
             <label class="text-xs font-bold text-slate-700 block">Adicionar Salgados ao Pedido</label>
             <div>
@@ -1524,7 +1953,6 @@
       }
       const totalPago = pagamentos.reduce((s, x) => s + x.valor, 0);
 
-      // #8: Subtrai do estoque de salgados e registra no histórico
       carrinhoPedido.forEach(item => {
         const prod = db.Produtos.find(pr => pr.id === item.produtoId);
         if (prod) {
@@ -2010,18 +2438,20 @@
       showToast("Cliente salvo!");
     }
 
-    // CONFIGURAÇÕES, BRANDING & NUVEM
+    // CONFIGURAÇÕES & BRANDING
     function applyBranding() {
       const nome = getConfig("nomeEmpresa") || "Minifábrica de Salgados";
       const endBase = getConfig("enderecoBase") || "";
       const logo = getConfig("logoBase64");
-      const scriptUrl = getConfig("googleScriptUrl");
-      const sheetUrl = getConfig("sheetUrl");
+      const clientId = getConfig("googleClientId") || DEFAULT_GOOGLE_CLIENT_ID;
+      const emailMaster = getConfig("emailMaster") || "";
+      const sheetUrl = googleSession?.sheetUrl || getConfig("sheetUrl") || "";
 
       document.getElementById("headerTitle").textContent = nome;
       document.getElementById("cfgNomeEmpresa").value = nome;
       document.getElementById("cfgEnderecoBase").value = endBase;
-      document.getElementById("cfgGoogleScriptUrl").value = scriptUrl;
+      document.getElementById("cfgGoogleClientId").value = clientId;
+      document.getElementById("cfgEmailMaster").value = emailMaster;
 
       if (logo) {
         document.getElementById("headerLogo").src = logo;
@@ -2030,6 +2460,8 @@
       if (sheetUrl) {
         document.getElementById("googleSheetLinkBox").classList.remove("hidden");
         document.getElementById("googleSheetAnchor").href = sheetUrl;
+      } else {
+        document.getElementById("googleSheetLinkBox").classList.add("hidden");
       }
     }
 
@@ -2059,73 +2491,16 @@
       const nome = document.getElementById("cfgNomeEmpresa").value.trim();
       const endBase = document.getElementById("cfgEnderecoBase").value.trim();
       const novaSenha = document.getElementById("cfgSenhaAdm").value.trim();
+      const clientId = document.getElementById("cfgGoogleClientId").value.trim();
+
       if (nome) setConfig("nomeEmpresa", nome);
       setConfig("enderecoBase", endBase);
       if (novaSenha) setConfig("senhaAdm", novaSenha);
+      setConfig("googleClientId", clientId);
 
       applyBranding();
       saveLocalDB();
       showToast("Configurações salvas!");
-    }
-
-    async function conectarGoogleCloud() {
-      const url = document.getElementById("cfgGoogleScriptUrl").value.trim();
-      if (!url) return showToast("Cole a URL do Google Apps Script primeiro.");
-      setConfig("googleScriptUrl", url);
-      saveLocalDB(false);
-
-      updateSyncStatus("syncing");
-      try {
-        const getRes = await fetch(url);
-        const getJson = await getRes.json();
-
-        if (getJson.status === "success" && getJson.data) {
-          const cloudData = getJson.data;
-          const tables = ["Colaboradores", "Ponto", "Insumos", "Produtos", "HistoricoEstoqueProdutos", "Clientes", "Pedidos"];
-          tables.forEach(t => {
-            const localArr = db[t] || [];
-            const cloudArr = cloudData[t] || [];
-            const map = new Map();
-            cloudArr.forEach(item => map.set(item.id, item));
-            localArr.forEach(item => map.set(item.id, item));
-            db[t] = Array.from(map.values());
-          });
-          if (getJson.sheetUrl) setConfig("sheetUrl", getJson.sheetUrl);
-        }
-
-        await syncWithCloud(false);
-        applyBranding();
-        renderAll();
-        showToast("Conectado e sincronizado com o Google Drive!");
-      } catch (err) {
-        console.error(err);
-        updateSyncStatus("error");
-        showToast("Erro ao conectar na nuvem.");
-      }
-    }
-
-    async function syncWithCloud(silent = false) {
-      const url = getConfig("googleScriptUrl");
-      if (!url) return;
-      updateSyncStatus("syncing");
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          body: JSON.stringify({ action: "SYNC_ALL", data: db })
-        });
-        const json = await res.json();
-        if (json.status === "success") {
-          if (json.sheetUrl) setConfig("sheetUrl", json.sheetUrl);
-          saveLocalDB(false);
-          updateSyncStatus("cloud");
-          if (!silent) showToast("Backup em nuvem concluído!");
-        } else {
-          updateSyncStatus("error");
-        }
-      } catch (e) {
-        updateSyncStatus("error");
-        if (!silent) showToast("Sem internet. Dados salvos localmente.");
-      }
     }
 
     function updateSyncStatus(state) {
@@ -2136,13 +2511,13 @@
         txt.textContent = "Sincronizando...";
       } else if (state === "cloud") {
         dot.className = "w-2 h-2 rounded-full bg-blue-500";
-        txt.textContent = "Sincronizado na Nuvem";
+        txt.textContent = "Nuvem (Conta Google)";
       } else if (state === "error") {
         dot.className = "w-2 h-2 rounded-full bg-rose-500";
-        txt.textContent = "Offline (Salvo local)";
+        txt.textContent = "Offline / Pendente";
       } else {
         dot.className = "w-2 h-2 rounded-full bg-emerald-500";
-        txt.textContent = getConfig("googleScriptUrl") ? "Nuvem ativa" : "Salvo localmente";
+        txt.textContent = googleSession?.approved ? "Conta Google conectada" : "Salvo localmente";
       }
     }
 
@@ -2313,6 +2688,8 @@
 
     function renderAll() {
       syncRegrasPontoInputs();
+      renderEmailsAprovados();
+      renderGoogleAccountUI();
       renderPonto();
       renderPedidos();
       renderEstoque();
